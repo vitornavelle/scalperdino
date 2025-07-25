@@ -1,8 +1,12 @@
+<<<<<<< HEAD
 # File: modules/data_collector.py
+=======
+>>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 import requests
 from dotenv import load_dotenv
 import os
 
+<<<<<<< HEAD
 # Carrega variáveis de ambiente para conexão
 load_dotenv()
 BASE_URL = os.getenv('HOST', 'https://api.bitget.com')
@@ -35,3 +39,21 @@ def get_last_price(symbol=None):
         raise ValueError(f"Não foi possível extrair o preço do ticker: {data}")
 
     return float(last_price)
+=======
+load_dotenv()
+BASE_URL = os.getenv('HOST', 'https://api.bitget.com')
+SYMBOL = os.getenv('SYMBOL', 'BTCUSDT')
+PRODUCT = os.getenv('PRODUCT', 'USDT-FUTURES')
+
+
+def get_last_price(symbol=None):
+    """Retorna o último preço de mercado do símbolo."""
+    sym = symbol or SYMBOL
+    path = "/api/v2/mix/market/ticker"
+    params = {"symbol": sym, "marginCoin": "USDT", "productType": PRODUCT}
+    resp = requests.get(BASE_URL + path, params=params, timeout=5)
+    data = resp.json()
+    # Extrai campo lastPr ou last
+    last = data.get('data', [{}])[0].get('lastPr') or data.get('data', [{}])[0].get('last')
+    return float(last)
+>>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49

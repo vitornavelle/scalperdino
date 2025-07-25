@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
   "position_open": false,
   "entry_price": null,
   "current_sl": null,
@@ -9,4 +10,11 @@
   "reversal_count": 0,
   "side": null,
   "last_signal": null
+=======
+  "testKey": "OK",
+  "last_signal": null,
+  "paused": false,
+  "position": "short",
+  "reversal_count": 0
+>>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 }

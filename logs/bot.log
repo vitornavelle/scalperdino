@@ -1023,6 +1023,7 @@ nohup: ignoring input
 [11:57:16] Fetched 100 candles.
 [11:58:16] Fetched 100 candles.
 [11:59:16] Fetched 100 candles.
+<<<<<<< HEAD
 [12:00:17] Fetched 100 candles.
 [12:01:17] Fetched 100 candles.
 [12:02:17] Fetched 100 candles.
@@ -1280,6 +1281,119 @@ nohup: ignoring input
 [22:00:04] Fetched 100 candles.
 [22:01:04] Fetched 100 candles.
 25-07-24 01:06:31,408 - INFO - Estado carregado com sucesso.
+=======
+m sucesso.
+2025-07-24 00:50:25,874 - INFO - Estado carregado com sucesso.
+2025-07-24 00:50:25,874 - INFO - Estado salvo com sucesso.
+2025-07-24 00:50:25,874 - INFO - Estado salvo com sucesso.
+2025-07-24 00:51:25,932 - INFO - Estado carregado com sucesso.
+2025-07-24 00:51:25,932 - INFO - Estado carregado com sucesso.
+2025-07-24 00:51:26,238 - INFO - Signal: {'signal': None, 'emaShort': 118990.93660595926, 'emaLong': 118970.98903548339, 'rsi': np.float64(58.115818130580394)}
+2025-07-24 00:51:26,238 - INFO - Estado carregado com sucesso.
+2025-07-24 00:51:26,238 - INFO - Estado carregado com sucesso.
+2025-07-24 00:51:26,239 - INFO - Estado salvo com sucesso.
+2025-07-24 00:51:26,239 - INFO - Estado salvo com sucesso.
+2025-07-24 00:52:26,299 - INFO - Estado carregado com sucesso.
+2025-07-24 00:52:26,299 - INFO - Estado carregado com sucesso.
+2025-07-24 00:52:26,609 - INFO - Signal: {'signal': None, 'emaShort': 118998.40528477002, 'emaLong': 118976.03063777686, 'rsi': np.float64(59.41925021579473)}
+2025-07-24 00:52:26,609 - INFO - Estado carregado com sucesso.
+2025-07-24 00:52:26,609 - INFO - Estado carregado com sucesso.
+2025-07-24 00:52:26,609 - INFO - Estado salvo com sucesso.
+2025-07-24 00:52:26,609 - INFO - Estado salvo com sucesso.
+2025-07-24 00:53:26,663 - INFO - Estado carregado com sucesso.
+2025-07-24 00:53:26,663 - INFO - Estado carregado com sucesso.
+2025-07-24 00:53:26,970 - INFO - Signal: {'signal': None, 'emaShort': 119005.97622781547, 'emaLong': 118981.49293134002, 'rsi': np.float64(58.886201753666114)}
+2025-07-24 00:53:26,971 - INFO - Estado carregado com sucesso.
+2025-07-24 00:53:26,971 - INFO - Estado carregado com sucesso.
+2025-07-24 00:53:26,971 - INFO - Estado salvo com sucesso.
+2025-07-24 00:53:26,971 - INFO - Estado salvo com sucesso.
+2025-07-24 00:54:27,024 - INFO - Estado carregado com sucesso.
+2025-07-24 00:54:27,024 - INFO - Estado carregado com sucesso.
+2025-07-24 00:54:27,348 - INFO - Signal: {'signal': None, 'emaShort': 119013.46498224219, 'emaLong': 118987.1527628336, 'rsi': np.float64(59.33728913134799)}
+2025-07-24 00:54:27,348 - INFO - Estado carregado com sucesso.
+2025-07-24 00:54:27,348 - INFO - Estado carregado com sucesso.
+2025-07-24 00:54:27,349 - INFO - Estado salvo com sucesso.
+2025-07-24 00:54:27,349 - INFO - Estado salvo com sucesso.
+2025-07-24 00:55:27,409 - INFO - Estado carregado com sucesso.
+2025-07-24 00:55:27,409 - INFO - Estado carregado com sucesso.
+2025-07-24 00:55:27,721 - INFO - Signal: {'signal': None, 'emaShort': 119013.41998579273, 'emaLong': 118989.37321596192, 'rsi': np.float64(57.22759032469988)}
+2025-07-24 00:55:27,721 - INFO - Estado carregado com sucesso.
+2025-07-24 00:55:27,721 - INFO - Estado carregado com sucesso.
+2025-07-24 00:55:27,721 - INFO - Estado salvo com sucesso.
+2025-07-24 00:55:27,721 - INFO - Estado salvo com sucesso.
+2025-07-24 00:56:27,756 - INFO - Estado carregado com sucesso.
+2025-07-24 00:56:27,756 - INFO - Estado carregado com sucesso.
+2025-07-24 00:56:28,062 - INFO - Signal: {'signal': None, 'emaShort': 119011.235988639, 'emaLong': 118990.56827251628, 'rsi': np.float64(53.895982630289666)}
+2025-07-24 00:56:28,062 - INFO - Estado carregado com sucesso.
+2025-07-24 00:56:28,062 - INFO - Estado carregado com sucesso.
+2025-07-24 00:56:28,062 - INFO - Estado salvo com sucesso.
+2025-07-24 00:56:28,062 - INFO - Estado salvo com sucesso.
+2025-07-24 00:57:28,123 - INFO - Estado carregado com sucesso.
+2025-07-24 00:57:28,123 - INFO - Estado carregado com sucesso.
+2025-07-24 00:57:28,423 - INFO - Signal: {'signal': None, 'emaShort': 118997.84079091121, 'emaLong': 118986.03809898175, 'rsi': np.float64(49.799063923298284)}
+2025-07-24 00:57:28,424 - INFO - Estado carregado com sucesso.
+2025-07-24 00:57:28,424 - INFO - Estado carregado com sucesso.
+2025-07-24 00:57:28,424 - INFO - Estado salvo com sucesso.
+2025-07-24 00:57:28,424 - INFO - Estado salvo com sucesso.
+2025-07-24 00:58:28,464 - INFO - Estado carregado com sucesso.
+2025-07-24 00:58:28,464 - INFO - Estado carregado com sucesso.
+2025-07-24 00:58:28,794 - INFO - Signal: {'signal': None, 'emaShort': 119000.55663272899, 'emaLong': 118988.57265196688, 'rsi': np.float64(52.55197645881533)}
+2025-07-24 00:58:28,794 - INFO - Estado carregado com sucesso.
+2025-07-24 00:58:28,794 - INFO - Estado carregado com sucesso.
+2025-07-24 00:58:28,794 - INFO - Estado salvo com sucesso.
+2025-07-24 00:58:28,794 - INFO - Estado salvo com sucesso.
+2025-07-24 00:59:28,816 - INFO - Estado carregado com sucesso.
+2025-07-24 00:59:28,816 - INFO - Estado carregado com sucesso.
+2025-07-24 00:59:29,129 - INFO - Signal: {'signal': None, 'emaShort': 119004.48130618205, 'emaLong': 118991.65489707296, 'rsi': np.float64(53.46066370510486)}
+2025-07-24 00:59:29,129 - INFO - Estado carregado com sucesso.
+2025-07-24 00:59:29,129 - INFO - Estado carregado com sucesso.
+2025-07-24 00:59:29,129 - INFO - Estado salvo com sucesso.
+2025-07-24 00:59:29,129 - INFO - Estado salvo com sucesso.
+2025-07-24 01:00:29,168 - INFO - Estado carregado com sucesso.
+2025-07-24 01:00:29,168 - INFO - Estado carregado com sucesso.
+2025-07-24 01:00:29,471 - INFO - Signal: {'signal': None, 'emaShort': 119008.00104495202, 'emaLong': 118994.53316947239, 'rsi': np.float64(54.81746253378687)}
+2025-07-24 01:00:29,471 - INFO - Estado carregado com sucesso.
+2025-07-24 01:00:29,471 - INFO - Estado carregado com sucesso.
+2025-07-24 01:00:29,472 - INFO - Estado salvo com sucesso.
+2025-07-24 01:00:29,472 - INFO - Estado salvo com sucesso.
+2025-07-24 01:01:29,532 - INFO - Estado carregado com sucesso.
+2025-07-24 01:01:29,532 - INFO - Estado carregado com sucesso.
+2025-07-24 01:01:29,847 - INFO - Signal: {'signal': None, 'emaShort': 119001.78083595524, 'emaLong': 118992.92292408124, 'rsi': np.float64(49.44710975496755)}
+2025-07-24 01:01:29,847 - INFO - Estado carregado com sucesso.
+2025-07-24 01:01:29,847 - INFO - Estado carregado com sucesso.
+2025-07-24 01:01:29,848 - INFO - Estado salvo com sucesso.
+2025-07-24 01:01:29,848 - INFO - Estado salvo com sucesso.
+2025-07-24 01:02:29,908 - INFO - Estado carregado com sucesso.
+2025-07-24 01:02:29,908 - INFO - Estado carregado com sucesso.
+2025-07-24 01:02:30,220 - INFO - Signal: {'signal': None, 'emaShort': 119004.28466874624, 'emaLong': 118994.79047283554, 'rsi': np.float64(54.9915609877746)}
+2025-07-24 01:02:30,220 - INFO - Estado carregado com sucesso.
+2025-07-24 01:02:30,220 - INFO - Estado carregado com sucesso.
+2025-07-24 01:02:30,221 - INFO - Estado salvo com sucesso.
+2025-07-24 01:02:30,221 - INFO - Estado salvo com sucesso.
+2025-07-24 01:03:30,281 - INFO - Estado carregado com sucesso.
+2025-07-24 01:03:30,281 - INFO - Estado carregado com sucesso.
+2025-07-24 01:03:30,591 - INFO - Signal: {'signal': None, 'emaShort': 119001.59973499714, 'emaLong': 118994.37073583696, 'rsi': np.float64(51.73029467390408)}
+2025-07-24 01:03:30,591 - INFO - Estado carregado com sucesso.
+2025-07-24 01:03:30,591 - INFO - Estado carregado com sucesso.
+2025-07-24 01:03:30,592 - INFO - Estado salvo com sucesso.
+2025-07-24 01:03:30,592 - INFO - Estado salvo com sucesso.
+2025-07-24 01:04:30,652 - INFO - Estado carregado com sucesso.
+2025-07-24 01:04:30,652 - INFO - Estado carregado com sucesso.
+2025-07-24 01:04:30,968 - INFO - Signal: {'signal': None, 'emaShort': 119006.75978798672, 'emaLong': 118997.54303138572, 'rsi': np.float64(54.24853374556482)}
+2025-07-24 01:04:30,968 - INFO - Estado carregado com sucesso.
+2025-07-24 01:04:30,968 - INFO - Estado carregado com sucesso.
+2025-07-24 01:04:30,968 - INFO - Estado salvo com sucesso.
+2025-07-24 01:04:30,968 - INFO - Estado salvo com sucesso.
+2025-07-24 01:05:31,029 - INFO - Estado carregado com sucesso.
+2025-07-24 01:05:31,029 - INFO - Estado carregado com sucesso.
+2025-07-24 01:05:31,347 - INFO - Signal: {'signal': None, 'emaShort': 118993.23183040175, 'emaLong': 118991.85344153592, 'rsi': np.float64(47.97962013158)}
+2025-07-24 01:05:31,347 - INFO - Estado carregado com sucesso.
+2025-07-24 01:05:31,347 - INFO - Estado carregado com sucesso.
+2025-07-24 01:05:31,348 - INFO - Estado salvo com sucesso.
+2025-07-24 01:05:31,348 - INFO - Estado salvo com sucesso.
+2025-07-24 01:06:31,408 - INFO - Estado carregado com sucesso.
+2025-07-24 01:06:31,408 - INFO - Estado carregado com sucesso.
+>>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 2025-07-24 01:06:31,729 - INFO - Signal: {'signal': 'SELL', 'emaShort': 118985.54946432401, 'emaLong': 118988.4024046176, 'rsi': np.float64(46.882523868555324)}
 2025-07-24 01:06:32,051 - INFO - Abrir SELL: {'code': '00000', 'msg': 'success', 'requestTime': 1753319191906, 'data': {'clientOid': '1753319191729', 'orderId': '1332082727927111681'}}
 2025-07-24 01:06:32,051 - ERROR - Erro no loop principal: 'price'
@@ -19977,6 +20091,7 @@ nohup: ignoring input
 2025-07-25 18:50:58,656 - INFO - Estado carregado com sucesso.
 2025-07-25 18:50:58,656 - INFO - Estado salvo com sucesso.
 2025-07-25 18:50:58,656 - INFO - Estado salvo com sucesso.
+<<<<<<< HEAD
 2025-07-25 18:51:54,800 - INFO - Estado carregado com sucesso.
 2025-07-25 18:51:54,800 - INFO - Estado carregado com sucesso.
 2025-07-25 18:51:55,104 - INFO - Signal: {'signal': None, 'emaShort': 116436.86397087715, 'emaLong': 116405.44598278156, 'rsi': np.float64(60.42225640200959)}
@@ -22122,3 +22237,5 @@ nohup: ignoring input
 2025-07-25 23:00:22,858 - INFO - Estado carregado com sucesso.
 2025-07-25 23:00:22,858 - INFO - Estado salvo com sucesso.
 2025-07-25 23:00:22,858 - INFO - Estado salvo com sucesso.
+=======
+>>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
