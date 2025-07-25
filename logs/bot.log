@@ -22106,3 +22106,12 @@ nohup: ignoring input
 2025-07-25 22:58:22,137 - INFO - Estado salvo com sucesso.
 2025-07-25 22:58:49,732 - INFO - Position mode set: {'code': '00000', 'msg': 'success', 'requestTime': 1753484329605, 'data': {'posMode': 'hedge_mode'}}
 2025-07-25 22:58:49,733 - INFO - Aguardando sinal para abertura de posição...
+2025-07-25 22:59:09,456 - INFO - Position mode set: {'code': '00000', 'msg': 'success', 'requestTime': 1753484349324, 'data': {'posMode': 'hedge_mode'}}
+2025-07-25 22:59:09,457 - INFO - Aguardando sinal para abertura de posição...
+2025-07-25 22:59:22,192 - INFO - Estado carregado com sucesso.
+2025-07-25 22:59:22,192 - INFO - Estado carregado com sucesso.
+2025-07-25 22:59:22,510 - INFO - Signal: {'signal': None, 'emaShort': 117231.68278841901, 'emaLong': 117233.78002196425, 'rsi': np.float64(51.66020618210189)}
+2025-07-25 22:59:22,510 - INFO - Estado carregado com sucesso.
+2025-07-25 22:59:22,510 - INFO - Estado carregado com sucesso.
+2025-07-25 22:59:22,511 - INFO - Estado salvo com sucesso.
+2025-07-25 22:59:22,511 - INFO - Estado salvo com sucesso.
