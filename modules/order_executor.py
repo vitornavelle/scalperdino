@@ -3,10 +3,7 @@ import requests
 import json
 import hmac
 import hashlib
-<<<<<<< HEAD
 import base64
-=======
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 from urllib.parse import urlencode
 from dotenv import load_dotenv
 import os
@@ -19,18 +16,12 @@ BASE_URL = os.getenv('HOST', 'https://api.bitget.com')
 SYMBOL = os.getenv('SYMBOL', 'BTCUSDT')
 PRODUCT = os.getenv('PRODUCT', 'USDT-FUTURES')
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 def sign(ts, method, path, body=""):
     mac = hmac.new(API_SECRET.encode(), (ts + method.upper() + path + body).encode(), hashlib.sha256).digest()
     return base64.b64encode(mac).decode()
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 def headers(method, path, params=None, body_dict=None):
     ts = str(int(time.time() * 1000))
     body, sign_path = "", path
@@ -47,10 +38,7 @@ def headers(method, path, params=None, body_dict=None):
         'Content-Type': 'application/json'
     }, body, sign_path
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 def set_position_mode():
     path = '/api/v2/mix/account/set-position-mode'
     payload = {'productType': PRODUCT, 'posMode': 'hedge_mode'}
@@ -58,10 +46,7 @@ def set_position_mode():
     resp = requests.post(BASE_URL + path, headers=hdrs, data=body).json()
     return resp
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 def place_order(side, trade_side, size, hold_side):
     path = '/api/v2/mix/order/place-order'
     payload = {
@@ -82,10 +67,7 @@ def place_order(side, trade_side, size, hold_side):
         raise RuntimeError(resp.get('msg'))
     return resp.get('data', {})
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 def place_tpsl_order(plan_type, trigger_price, size):
     path = '/api/v2/mix/order/place-tpsl-order'
     payload = {
@@ -94,11 +76,8 @@ def place_tpsl_order(plan_type, trigger_price, size):
         'marginCoin': 'USDT',
         'planType': 'profit_plan' if plan_type == 'takeProfit' else 'loss_plan',
         'triggerType': 'mark_price',
-<<<<<<< HEAD
         'orderId': None,
-=======
         'orderId': None,  # preenchido pela execução anterior
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
         'size': str(size),
         'triggerPrice': str(trigger_price),
         'executePrice': str(trigger_price),
@@ -113,10 +92,7 @@ def place_tpsl_order(plan_type, trigger_price, size):
         raise RuntimeError(resp.get('msg'))
     return resp.get('data', {})
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 8d572722e9e800ad9697f1f8f779d8d48fa2fd49
 def cancel_plan(order_id):
     path = '/api/v2/mix/order/cancel-plan-order'
     payload = {
