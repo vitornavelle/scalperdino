@@ -16,11 +16,9 @@ BASE_URL = os.getenv('HOST', 'https://api.bitget.com')
 SYMBOL = os.getenv('SYMBOL', 'BTCUSDT')
 PRODUCT = os.getenv('PRODUCT', 'USDT-FUTURES')
 
-
 def sign(ts, method, path, body=""):
     mac = hmac.new(API_SECRET.encode(), (ts + method.upper() + path + body).encode(), hashlib.sha256).digest()
     return base64.b64encode(mac).decode()
-
 
 def headers(method, path, params=None, body_dict=None):
     ts = str(int(time.time() * 1000))
@@ -38,14 +36,12 @@ def headers(method, path, params=None, body_dict=None):
         'Content-Type': 'application/json'
     }, body, sign_path
 
-
 def set_position_mode():
     path = '/api/v2/mix/account/set-position-mode'
     payload = {'productType': PRODUCT, 'posMode': 'hedge_mode'}
     hdrs, body, _ = headers('POST', path, body_dict=payload)
     resp = requests.post(BASE_URL + path, headers=hdrs, data=body).json()
     return resp
-
 
 def place_order(side, trade_side, size, hold_side):
     path = '/api/v2/mix/order/place-order'
@@ -67,7 +63,6 @@ def place_order(side, trade_side, size, hold_side):
         raise RuntimeError(resp.get('msg'))
     return resp.get('data', {})
 
-
 def place_tpsl_order(plan_type, trigger_price, size):
     path = '/api/v2/mix/order/place-tpsl-order'
     payload = {
@@ -77,7 +72,6 @@ def place_tpsl_order(plan_type, trigger_price, size):
         'planType': 'profit_plan' if plan_type == 'takeProfit' else 'loss_plan',
         'triggerType': 'mark_price',
         'orderId': None,
-        'orderId': None,  # preenchido pela execução anterior
         'size': str(size),
         'triggerPrice': str(trigger_price),
         'executePrice': str(trigger_price),
@@ -91,7 +85,6 @@ def place_tpsl_order(plan_type, trigger_price, size):
     if resp.get('code') != '00000':
         raise RuntimeError(resp.get('msg'))
     return resp.get('data', {})
-
 
 def cancel_plan(order_id):
     path = '/api/v2/mix/order/cancel-plan-order'
