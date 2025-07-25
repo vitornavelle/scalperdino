@@ -1,0 +1,12 @@
+{
+  "position_open": false,
+  "entry_price": null,
+  "current_sl": null,
+  "tp_order_ids": [],
+  "be1": false,
+  "be2": false,
+  "paused": false,
+  "reversal_count": 0,
+  "side": null,
+  "last_signal": null
+}
