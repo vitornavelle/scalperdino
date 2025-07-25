@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Scalper Dino Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- Toastr CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+  <style>
+    .badge { font-size: 1rem; padding: 0.7em 1.3em; }
+    .badge-ativo { background-color: #007bff !important; color: #fff; }
+    .badge-pausado { background-color: #fd7e14 !important; color: #fff; }
+    .badge-offline { background-color: #dc3545 !important; color: #fff; }
+    #toggle-btn.badge-ativo { background-color: #007bff; color: #fff; }
+    #toggle-btn.badge-pausado { background-color: #fd7e14; color: #fff; }
+    #toggle-btn.badge-offline { background-color: #dc3545; color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>Scalper Dino</h1>
+
+  <section id="status">
+    <h2>Status do Robô</h2>
+    <span id="service-status" class="badge badge-offline">Carregando...</span>
+    <button id="toggle-btn" class="badge badge-offline">Pausar/Retomar</button>
+  </section>
+
+  <section id="config-editor">
+    <h2>Parâmetros de Trade</h2>
+    <form id="config-form">
+      <!-- Market -->
+      <fieldset>
+        <legend>Market</legend>
+        <label>symbol<br><input name="symbol" /></label>
+        <label>productType<br><input name="productType" /></label>
+      </fieldset>
+      <!-- Indicators -->
+      <fieldset>
+        <legend>Indicators</legend>
+        <label>timeframe<br><input name="timeframe" /></label>
+        <label>candles<br><input name="candles" type="number" /></label>
+        <label>emaShort<br><input name="emaShort" type="number" /></label>
+        <label>emaLong<br><input name="emaLong" type="number" /></label>
+        <label>rsiPeriod<br><input name="rsiPeriod" type="number" /></label>
+        <label>rsiBuyThreshold<br><input name="rsiBuyThreshold" type="number" /></label>
+        <label>rsiSellThreshold<br><input name="rsiSellThreshold" type="number" /></label>
+      </fieldset>
+      <!-- Risk Management -->
+      <fieldset>
+        <legend>Risk Management</legend>
+        <label>orderSize<br><input name="orderSize" type="number" step="0.0001" /></label>
+        <label>slPct<br><input name="slPct" type="number" step="0.01" /></label>
+        <label>tp1Pct<br><input name="tp1Pct" type="number" step="0.01" /></label>
+        <label>tp2Pct<br><input name="tp2Pct" type="number" step="0.01" /></label>
+        <label>tp3Pct<br><input name="tp3Pct" type="number" step="0.01" /></label>
+      </fieldset>
+      <!-- TP Portions -->
+      <fieldset>
+        <legend>TP Portions (porções de ordem)</legend>
+        <label>tpPortions[0]<br><input name="tpPortions.0" type="number" step="0.01" /></label>
+        <label>tpPortions[1]<br><input name="tpPortions.1" type="number" step="0.01" /></label>
+        <label>tpPortions[2]<br><input name="tpPortions.2" type="number" step="0.01" /></label>
+      </fieldset>
+      <!-- Execution -->
+      <fieldset>
+        <legend>Execution</legend>
+        <label>beOffsetPct1<br><input name="beOffsetPct1" type="number" step="0.01" /></label>
+        <label>beOffsetPct2<br><input name="beOffsetPct2" type="number" step="0.01" /></label>
+        <label>reversalSignalsRequired<br><input name="reversalSignalsRequired" type="number" /></label>
+        <label>pollIntervalSec<br><input name="pollIntervalSec" type="number" /></label>
+      </fieldset>
+      <button type="submit">Salvar Configurações</button>
+    </form>
+  </section>
+
+  <section id="logs">
+    <h2>Logs Recentes</h2>
+    <pre id="log-area"></pre>
+  </section>
+
+  <section id="metrics">
+    <h2>Métricas</h2>
+    <ul>
+      <li>Lucro/Prejuízo Diário: <span id="pnl-day">—</span></li>
+      <li>7 dias: <span id="pnl-7d">—</span></li>
+      <li>15 dias: <span id="pnl-15d">—</span></li>
+      <li>30 dias: <span id="pnl-30d">—</span></li>
+    </ul>
+  </section>
+
+  <!-- Toastr JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
