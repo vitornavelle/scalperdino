@@ -1,143 +1,115 @@
 #!/usr/bin/env python3
 import time
-import logging
 import json
-
-# Importa módulos internos
-from modules.data_collector import fetch_candles
-from modules.signal_generator import generate_signal
+import logging
+from dotenv import load_dotenv
+from modules.data_collector import get_last_price
 from modules.order_executor import (
     set_position_mode,
     place_order,
     place_tpsl_order,
-    cancel_plan,
-    get_single_position
+    cancel_plan
 )
-from modules.recovery_manager import load_state, update_state, sync_state_with_bitget  # <--- ATUALIZAÇÃO
+from modules.recovery_manager import load_state, update_state, sync_state_with_bitget
 
-# Carrega configurações
-with open("config/config.json") as f:
-    cfg = json.load(f)
-
-# Configura logger
-logging.basicConfig(
-    filename="logs/bot.log",
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
 
 def main():
-    # 0) Sincroniza state.json com a posição real na Bitget ao iniciar
-    sync_state_with_bitget()
-    logging.info("Sincronização inicial do state.json com a posição real da Bitget concluída.")
+    # Carrega variáveis de ambiente
+    load_dotenv()
 
-    # 1) Garante hedge_mode
+    # Carrega configuração
+    with open('config/config.json') as f:
+        cfg = json.load(f)
+
+    # Configura logger
+    logging.basicConfig(
+        filename='logs/bot.log',
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger()
+
+    # Carrega estado e sincroniza com Bitget
+    state = load_state()
+    sync_state_with_bitget(state)
+
+    # Define modo de posição
     resp = set_position_mode()
-    logging.info(f"Mode response: {resp}")
+    logger.info(f"Position mode set: {resp}")
 
-    while True:
-        try:
-            # (Opcional) Sincronize a cada ciclo - DESCOMENTE SE DESEJAR PERIODICAMENTE
-            # sync_state_with_bitget()
+    # Se não houver posição aberta, abre e cria ordens iniciais
+    if not state.get('position_open', False):
+        side = 'buy' if cfg['direction'] == 'long' else 'sell'
+        hold = 'long' if side == 'buy' else 'short'
 
-            # Recarrega o estado a cada ciclo
-            state = load_state()
+        # 1) Abre posição de mercado
+        resp_order = place_order(
+            side=side,
+            trade_side='open',
+            size=cfg['orderSize'],
+            hold_side=hold
+        )
+        entry_price = float(resp_order.get('filledPrice', resp_order.get('entry_price')))
+        state['entry_price'] = entry_price
+        state['position_open'] = True
+        update_state(state)
+        logger.info(f"Opened position {side} at {entry_price}")
 
-            # Se estiver pausado, apenas loga e espera
-            if state.get("paused", False):
-                logging.info("Robô PAUSADO; aguardando retomada...")
-                time.sleep(cfg["pollIntervalSec"])
-                continue
+        # 2) Cria SL inicial e TPs
+        sl_price = entry_price * (1 - cfg['slPct']) if side == 'buy' else entry_price * (1 + cfg['slPct'])
+        sl = place_tpsl_order('stopLoss', sl_price, cfg['orderSize'])
+        state['sl_order_id'] = sl['orderId']
 
-            # 2) Coleta dados e gera sinal
-            candles = fetch_candles()
-            sig = generate_signal()
-            logging.info(f"Signal: {sig}")
+        state['tp_order_ids'] = []
+        for pct in cfg['tpPct']:
+            tp_price = entry_price * (1 + pct) if side == 'buy' else entry_price * (1 - pct)
+            tp = place_tpsl_order('takeProfit', tp_price, cfg['orderSize'] * pct)
+            state['tp_order_ids'].append(tp['orderId'])
 
-            # --- LÓGICA DE TRADING ---
-            position = state.get("position")        # None, "long" ou "short"
-            sig_type = sig.get("signal")            # "BUY", "SELL" ou None
+        # Flags de break-even
+        state['be1'] = False
+        state['be2'] = False
+        update_state(state)
+        logger.info(f"Placed SL {sl['orderId']} and TPs {state['tp_order_ids']}")
 
-            # 3.1) Abrir posição somente se houver sinal e mudar de posição
-            if sig_type == "BUY" and position != "long":
-                resp_order = place_order(
-                    side="buy",
-                    trade_side="open",
-                    size=cfg["orderSize"],
-                    hold_side="long"
-                )
-                entry = resp_order.get("entry_price", 0)
-                logging.info(f"Abrir BUY: {resp_order} | entry_price={entry}")
+    # 3) Loop de monitoramento ativo
+    interval = cfg.get('pollIntervalSec', 0.5)
+    while state.get('position_open', False) and not state.get('paused', False):
+        price = get_last_price(cfg['symbol'])
+        entry = state['entry_price']
 
-                # SL e TPs
-                place_tpsl_order("stopLoss", entry * (1 - cfg["slPct"]), cfg["orderSize"], "long")
-                place_tpsl_order("takeProfit", entry * (1 + cfg["tp1Pct"]), cfg["orderSize"] * cfg["tpPortions"][0], "long")
-                place_tpsl_order("takeProfit", entry * (1 + cfg["tp2Pct"]), cfg["orderSize"] * cfg["tpPortions"][1], "long")
-                place_tpsl_order("takeProfit", entry * (1 + cfg["tp3Pct"]), cfg["orderSize"] * cfg["tpPortions"][2], "long")
+        # Verifica TP1 e move SL para BE
+        tp1_price = entry * (1 + cfg['tpPct'][0])
+        if not state['be1'] and price >= tp1_price:
+            cancel_plan(state['sl_order_id'])
+            new_sl = entry  # break-even
+            sl = place_tpsl_order('stopLoss', new_sl, cfg['orderSize'])
+            state['sl_order_id'] = sl['orderId']
+            state['be1'] = True
+            update_state(state)
+            logger.info(f"TP1 reached; SL moved to BE1 at {new_sl}")
 
-                state = update_state(
-                    position="long",
-                    last_signal="BUY",
-                    reversal_count=0
-                )
+        # Verifica TP2 e move SL para nível de TP1
+        tp2_price = entry * (1 + cfg['tpPct'][1])
+        if state['be1'] and not state['be2'] and price >= tp2_price:
+            cancel_plan(state['sl_order_id'])
+            new_sl = entry * (1 + cfg['tpPct'][0])
+            sl = place_tpsl_order('stopLoss', new_sl, cfg['orderSize'] * (1 - cfg['tpPct'][0]))
+            state['sl_order_id'] = sl['orderId']
+            state['be2'] = True
+            update_state(state)
+            logger.info(f"TP2 reached; SL moved to TP1 price {new_sl}")
 
-            elif sig_type == "SELL" and position != "short":
-                resp_order = place_order(
-                    side="sell",
-                    trade_side="open",
-                    size=cfg["orderSize"],
-                    hold_side="short"
-                )
-                entry = resp_order.get("entry_price", 0)
-                logging.info(f"Abrir SELL: {resp_order} | entry_price={entry}")
+        # Sincroniza estado (fecha posição se SL/TP executados)
+        sync_state_with_bitget(state)
+        if not state.get('position_open', False):
+            logger.info("Position closed; exiting loop.")
+            break
 
-                # SL e TPs invertidos para short
-                place_tpsl_order("stopLoss", entry * (1 + cfg["slPct"]), cfg["orderSize"], "short")
-                place_tpsl_order("takeProfit", entry * (1 - cfg["tp1Pct"]), cfg["orderSize"] * cfg["tpPortions"][0], "short")
-                place_tpsl_order("takeProfit", entry * (1 - cfg["tp2Pct"]), cfg["orderSize"] * cfg["tpPortions"][1], "short")
-                place_tpsl_order("takeProfit", entry * (1 - cfg["tp3Pct"]), cfg["orderSize"] * cfg["tpPortions"][2], "short")
+        time.sleep(interval)
 
-                state = update_state(
-                    position="short",
-                    last_signal="SELL",
-                    reversal_count=0
-                )
+    logger.info("Bot execution finished.")
 
-            # 3.2) Reversão após sinais contrários
-            elif position == "long" and sig_type == "SELL":
-                count = state.get("reversal_count", 0) + 1
-                logging.info(f"Sinal contrário detectado ({count}/{cfg['reversalSignalsRequired']})")
-                if count >= cfg["reversalSignalsRequired"]:
-                    resp_close = place_order("sell", "close", cfg["orderSize"], "long")
-                    logging.info(f"Fechar posição long: {resp_close}")
 
-                    cancel_plan(state.get("sl_order_id", ""), "stopLoss")
-                    for oid in state.get("tp_order_ids", []):
-                        cancel_plan(oid, "takeProfit")
-
-                    state = update_state(position=None, last_signal="SELL", reversal_count=0)
-
-            elif position == "short" and sig_type == "BUY":
-                count = state.get("reversal_count", 0) + 1
-                logging.info(f"Sinal contrário detectado ({count}/{cfg['reversalSignalsRequired']})")
-                if count >= cfg["reversalSignalsRequired"]:
-                    resp_close = place_order("buy", "close", cfg["orderSize"], "short")
-                    logging.info(f"Fechar posição short: {resp_close}")
-
-                    cancel_plan(state.get("sl_order_id", ""), "stopLoss")
-                    for oid in state.get("tp_order_ids", []):
-                        cancel_plan(oid, "takeProfit")
-
-                    state = update_state(position=None, last_signal="BUY", reversal_count=0)
-
-            else:
-                # Nenhuma ação, apenas atualiza ultimo sinal e contagem
-                state = update_state(last_signal=sig_type)
-
-        except Exception as e:
-            logging.error(f"Erro no loop principal: {e}")
-
-        time.sleep(cfg["pollIntervalSec"])
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
