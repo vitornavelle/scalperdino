@@ -9,17 +9,17 @@
   "rsiBuyThreshold": 70,
   "rsiSellThreshold": 30,
   "orderSize": 0.0004,
-  "slPct": 0.0002,
-  "tp1Pct": 0.0003,
-  "tp2Pct": 0.0005,
-  "tp3Pct": 0.0009,
+  "slPct": 0.002,
+  "tp1Pct": 0.003,
+  "tp2Pct": 0.005,
+  "tp3Pct": 0.0089,
   "tpPortions": [
     0.5,
     0.25,
     0.25
   ],
-  "beOffsetPct1": 0.0001,
-  "beOffsetPct2": 0.0004,
+  "beOffsetPct1": 0.001,
+  "beOffsetPct2": 0.004,
   "reversalSignalsRequired": 2,
   "pollIntervalSec": 10
 }
