@@ -16,6 +16,7 @@ from modules.order_executor import (
 from modules.recovery_manager import load_state, update_state, sync_state_with_bitget
 from modules.signal_generator import generate_signal
 
+
 def main():
     # Carrega variáveis de ambiente
     load_dotenv()
@@ -106,7 +107,9 @@ def main():
                 'side': side,
                 'reversal_count': 0,
                 'current_sl': sl_price,
-                'tp_order_ids': []
+                'tp_order_ids': [],
+                'be1': False,
+                'be2': False
             })
             update_state(state)
 
@@ -157,15 +160,15 @@ def main():
                 for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='sell', trade_side='close', size=order_size, hold_side='long')
                 state.update({
-    'position_open': False,
-    'entry_price': None,
-    'current_sl': None,
-    'tp_order_ids': [],
-    'be1': False,
-    'be2': False,
-    'reversal_count': 0,
-    'side': None
-})
+                    'position_open': False,
+                    'entry_price': None,
+                    'current_sl': None,
+                    'tp_order_ids': [],
+                    'be1': False,
+                    'be2': False,
+                    'reversal_count': 0,
+                    'side': None
+                })
                 update_state(state)
                 logger.info(f"SL manual atingido: {price}")
                 continue
@@ -173,21 +176,38 @@ def main():
                 for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='buy', trade_side='close', size=order_size, hold_side='short')
                 state.update({
-    'position_open': False,
-    'entry_price': None,
-    'current_sl': None,
-    'tp_order_ids': [],
-    'be1': False,
-    'be2': False,
-    'reversal_count': 0,
-    'side': None
-})
+                    'position_open': False,
+                    'entry_price': None,
+                    'current_sl': None,
+                    'tp_order_ids': [],
+                    'be1': False,
+                    'be2': False,
+                    'reversal_count': 0,
+                    'side': None
+                })
                 update_state(state)
                 logger.info(f"SL manual atingido: {price}")
                 continue
 
-            # Reversão e BE (mantêm lógica anterior)
-            # ...
+            # Break-even automático
+            # TP1
+            if not state['be1']:
+                target1 = entry * (1 + tp_price_pcts[0]) if state['side']=='buy' else entry * (1 - tp_price_pcts[0])
+                if (state['side']=='buy' and price>=target1) or (state['side']=='sell' and price<=target1):
+                    sl_new = entry * (1 + be_offset1) if state['side']=='buy' else entry * (1 - be_offset1)
+                    state['current_sl'] = sl_new
+                    state['be1'] = True
+                    update_state(state)
+                    logger.info(f"TP1 reached; SL manual moved to {state['current_sl']}")
+            # TP2
+            if state['be1'] and not state['be2']:
+                target2 = entry * (1 + tp_price_pcts[1]) if state['side']=='buy' else entry * (1 - tp_price_pcts[1])
+                if (state['side']=='buy' and price>=target2) or (state['side']=='sell' and price<=target2):
+                    sl_new = entry * (1 + be_offset2) if state['side']=='buy' else entry * (1 - be_offset2)
+                    state['current_sl'] = sl_new
+                    state['be2'] = True
+                    update_state(state)
+                    logger.info(f"TP2 reached; SL manual moved to {state['current_sl']}")
 
         time.sleep(interval)
 
