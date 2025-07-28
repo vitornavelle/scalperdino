@@ -53,7 +53,8 @@ def main():
 
     # Loop principal
     while not state.get('paused', False):
-        # Se não há posição aberta, aguarda sinal
+
+        # 1) Abertura de posição
         if not state.get('position_open', False):
             logger.info("Aguardando sinal para abertura de posição...")
             while True:
@@ -70,7 +71,7 @@ def main():
             side = 'buy' if sig == 'BUY' else 'sell'
             hold = 'long' if side == 'buy' else 'short'
 
-            # 1) Abre posição de mercado
+            # Tenta abrir posição e trata erros
             try:
                 resp_order = place_order(
                     side=side,
@@ -79,16 +80,20 @@ def main():
                     hold_side=hold
                 )
             except RuntimeError as e:
-                logger.error(f"Falha ao abrir posição ({sig}): {e}")
-                time.sleep(interval)
+                msg = str(e)
+                if "exceeds the balance" in msg:
+                    logger.warning("Saldo insuficiente para abrir posição. Ajuste orderSize no config ou aguarde mais saldo.")
+                    time.sleep(60)
+                else:
+                    logger.error(f"Falha ao abrir posição ({sig}): {e}")
+                    time.sleep(interval)
                 continue
 
-            # Tratamento caso API não retorne preço
+            # Determina entry_price, com fallback a preço de mercado
             filled = resp_order.get('filledPrice') or resp_order.get('entry_price')
             if filled is None:
-                logger.error(f"Não foi possível determinar entry_price: resposta de place_order = {resp_order}")
-                time.sleep(interval)
-                continue
+                filled = get_last_price(cfg['symbol'])
+                logger.warning(f"filledPrice não retornado; usando preço de mercado {filled} como entry_price")
 
             entry_price = float(filled)
             sl_price = entry_price * (1 - sl_pct) if side == 'buy' else entry_price * (1 + sl_pct)
@@ -109,19 +114,18 @@ def main():
                 tp = place_tpsl_order('takeProfit', tp_price, order_size * vol)
                 state['tp_order_ids'].append(tp['orderId'])
 
-            # Flags de BE
             state['be1'] = False
             state['be2'] = False
             update_state(state)
             logger.info(f"Abrindo {side} em {entry_price} | SL manual em {sl_price} | TPs {state['tp_order_ids']}")
 
-        # Se há posição aberta, faz monitoramento
+        # 2) Monitoramento de posição aberta
         if state.get('position_open', False):
             price = get_last_price(cfg['symbol'])
             entry = state['entry_price']
+            current_sl = state.get('current_sl')
 
             # Checa SL manual
-            current_sl = state.get('current_sl')
             if state['side'] == 'buy' and current_sl is not None and price <= current_sl:
                 logger.info(f"SL manual atingido em {price}")
                 for tp_id in state.get('tp_order_ids', []):
@@ -167,8 +171,16 @@ def main():
                 logger.info(f"Reversal threshold reached ({reversal_required}); executing reversal.")
                 for tp_id in state.get('tp_order_ids', []):
                     cancel_plan(tp_id)
-                place_order(side=('sell' if state['side']=='buy' else 'buy'),
-                            trade_side='close', size=order_size, hold_side=state['side'])
+
+                # Fecha posição atual
+                place_order(
+                    side=('sell' if state['side']=='buy' else 'buy'),
+                    trade_side='close',
+                    size=order_size,
+                    hold_side=state['side']
+                )
+
+                # Abre reversão
                 try:
                     open_resp = place_order(
                         side=('sell' if state['side']=='buy' else 'buy'),
@@ -177,15 +189,19 @@ def main():
                         hold_side=('long' if state['side']=='sell' else 'short')
                     )
                 except RuntimeError as e:
-                    logger.error(f"Falha ao reverter posição: {e}")
-                    time.sleep(interval)
+                    msg = str(e)
+                    if "exceeds the balance" in msg:
+                        logger.warning("Saldo insuficiente para reverter posição. Ajuste orderSize no config ou aguarde mais saldo.")
+                        time.sleep(60)
+                    else:
+                        logger.error(f"Falha ao reverter posição: {e}")
+                        time.sleep(interval)
                     continue
 
                 new_filled = open_resp.get('filledPrice') or open_resp.get('entry_price')
                 if new_filled is None:
-                    logger.error(f"Não foi possível determinar new_entry: resposta de place_order = {open_resp}")
-                    time.sleep(interval)
-                    continue
+                    new_filled = get_last_price(cfg['symbol'])
+                    logger.warning(f"filledPrice não retornado na reversão; usando preço de mercado {new_filled} como entry_price")
 
                 new_entry = float(new_filled)
                 new_sl = new_entry * (1 - sl_pct) if (state['side']=='sell') else new_entry * (1 + sl_pct)
@@ -203,7 +219,7 @@ def main():
                 state['be1'] = False
                 state['be2'] = False
                 update_state(state)
-                logger.info(f"Reversal executed: new SL manual {new_sl} and TPs {state['tp_order_ids']}")
+                logger.info(f"Reversal executed: new SL manual {new_sl} e TPs {state['tp_order_ids']}")
                 time.sleep(interval)
                 continue
 
@@ -218,7 +234,7 @@ def main():
                 state['current_sl'] = entry * (1 + be_offset2)
                 state['be2'] = True
                 update_state(state)
-                logger.info(f"TP2 reached; SL manual moved to {state['current_sl']}")
+                logger.info(f"TP2 reached; SL manual moved para {state['current_sl']}")
 
             sync_state_with_bitget(state)
 
