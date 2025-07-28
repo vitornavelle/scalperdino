@@ -57,13 +57,17 @@ def main():
         if not state.get('position_open', False):
             logger.info("Aguardando sinal para abertura de posição...")
             while True:
-                signal = generate_signal()
-                if signal in ('BUY', 'SELL'):
-                    logger.info(f"Sinal recebido: {signal}")
+                result = generate_signal()
+                sig = result.get('signal')
+                if sig in ('BUY', 'SELL'):
+                    logger.info(
+                        f"Sinal recebido: {sig} | EMA short={result.get('emaShort'):.2f} "
+                        f"long={result.get('emaLong'):.2f} RSI={result.get('rsi'):.2f}"
+                    )
                     break
                 time.sleep(signal_poll)
 
-            side = 'buy' if signal == 'BUY' else 'sell'
+            side = 'buy' if sig == 'BUY' else 'sell'
             hold = 'long' if side == 'buy' else 'short'
 
             # 1) Abre posição de mercado
@@ -136,7 +140,8 @@ def main():
                 continue
 
             # Lógica de reversão
-            sig = generate_signal()
+            result = generate_signal()
+            sig = result.get('signal')
             if sig in ('BUY', 'SELL'):
                 if (sig == 'BUY' and state['side'] == 'sell') or (sig == 'SELL' and state['side'] == 'buy'):
                     state['reversal_count'] += 1
