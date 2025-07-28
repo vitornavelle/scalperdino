@@ -5,7 +5,6 @@ import logging
 import math
 import requests
 from dotenv import load_dotenv
-from urllib.parse import urlencode
 from modules.data_collector import get_last_price
 from modules.order_executor import (
     set_position_mode,
@@ -17,7 +16,6 @@ from modules.order_executor import (
 from modules.recovery_manager import load_state, update_state, sync_state_with_bitget
 from modules.signal_generator import generate_signal
 
-
 def main():
     # Carrega variáveis de ambiente
     load_dotenv()
@@ -27,7 +25,9 @@ def main():
         cfg = json.load(f)
     reversal_required = cfg.get('reversalSignalsRequired', 0)
     tick_size = cfg.get('tickSize', 1)
-    margin_coin = 'USDT'
+    margin_coin = cfg.get('marginCoin', 'USDT')
+    symbol = cfg['symbol']
+    product_type = cfg.get('productType', 'USDT-FUTURES')
 
     # Configura logger
     logging.basicConfig(
@@ -37,11 +37,11 @@ def main():
     )
     logger = logging.getLogger()
 
-    # Ajusta modo de posição
+    # Define modo de posição UMA ÚNICA VEZ
     resp = set_position_mode()
     logger.info(f"Position mode set: {resp}")
 
-    # Parâmetros
+    # Parâmetros principais
     order_size      = cfg['orderSize']
     sl_pct          = cfg['slPct']
     tp_price_pcts   = [cfg['tp1Pct'], cfg['tp2Pct'], cfg['tp3Pct']]
@@ -53,15 +53,15 @@ def main():
 
     # Loop principal
     while True:
+        # Recarrega estado
         state = load_state()
-        # Pausa via dashboard
         if state.get('paused', False):
             logger.info("Bot pausado via dashboard.")
             time.sleep(interval)
             continue
         sync_state_with_bitget(state)
 
-        # Se não há posição aberta, tenta abrir
+        # Abertura de posição
         if not state.get('position_open', False):
             logger.info("Aguardando sinal para abertura de posição...")
             while True:
@@ -78,7 +78,7 @@ def main():
             side = 'buy' if sig == 'BUY' else 'sell'
             hold = 'long' if side == 'buy' else 'short'
 
-            # Abre posição de mercado
+            # Executa market order
             try:
                 resp_order = place_order(
                     side=side,
@@ -87,105 +87,91 @@ def main():
                     hold_side=hold
                 )
             except RuntimeError as e:
-                msg = str(e)
-                if "exceeds the balance" in msg:
-                    logger.warning("Saldo insuficiente; ajuste orderSize no config ou aguarde.")
-                    time.sleep(60)
-                else:
-                    logger.error(f"Falha ao abrir posição ({sig}): {e}")
-                    time.sleep(interval)
+                logger.error(f"Erro ao abrir posição: {e}")
+                time.sleep(interval)
                 continue
 
-            # Determina price e SL
+            # Determina entry_price
             filled = resp_order.get('filledPrice') or resp_order.get('entry_price')
             if filled is None:
-                filled = get_last_price(cfg['symbol'])
-                logger.warning(f"filledPrice não retornado; usando preço de mercado {filled}")
+                filled = get_last_price(symbol)
+                logger.warning(f"fallback entry_price: {filled}")
             entry_price = float(filled)
             sl_price = entry_price * (1 - sl_pct) if side == 'buy' else entry_price * (1 + sl_pct)
 
-            # Registra estado inicial e persiste antes de criar TPs
+            # Persiste estado antes de criar TPs
             state.update({
                 'entry_price': entry_price,
                 'position_open': True,
                 'side': side,
                 'reversal_count': 0,
-                'current_sl': sl_price
+                'current_sl': sl_price,
+                'tp_order_ids': []
             })
             update_state(state)
 
-            # Cria TPs usando método similar ao teste
-            entry_oid = resp_order.get('orderId')
-            state['tp_order_ids'] = []
+            # Cria planos de take-profit via API direta
+            entry_order_id = resp_order.get('orderId')
             for pct, vol in zip(tp_price_pcts, tp_vol_portions):
                 raw_price = entry_price * (1 + pct) if side == 'buy' else entry_price * (1 - pct)
                 tp_price = round(raw_price / tick_size) * tick_size
+                client_oid = str(int(time.time() * 1000))
                 payload = {
-                    'symbol': cfg['symbol'],
-                    'productType': cfg['productType'],
+                    'symbol': symbol,
+                    'productType': product_type,
                     'marginCoin': margin_coin,
                     'planType': 'profit_plan',
                     'triggerType': 'mark_price',
-                    'orderId': entry_oid,
+                    'orderId': entry_order_id,
                     'size': str(order_size * vol),
                     'triggerPrice': str(tp_price),
                     'executePrice': str(tp_price),
                     'side': side,
                     'holdSide': hold,
                     'reduceOnly': True,
-                    'clientOid': str(int(time.time() * 1000))
+                    'clientOid': client_oid
                 }
                 try:
-                    hdrs, body, request_path = headers('POST', '/api/v2/mix/order/place-tpsl-order', body_dict=payload)
+                    hdrs, body, _ = headers('POST', '/api/v2/mix/order/place-tpsl-order', body_dict=payload)
                     resp_tp = requests.post(BASE_URL + '/api/v2/mix/order/place-tpsl-order', headers=hdrs, data=body).json()
                     if resp_tp.get('code') != '00000':
                         raise RuntimeError(resp_tp.get('msg'))
-                    tp_id = resp_tp.get('data', {}).get('orderId')
+                    tp_id = resp_tp['data']['orderId']
                     state['tp_order_ids'].append(tp_id)
+                    logger.info(f"TP criado: {tp_id} @ {tp_price}")
                 except Exception as e:
-                    logger.error(f"Erro ao criar TP em {tp_price}: {e}")
-            # Finaliza estado
-            update_state(state)
-            logger.info(f"Posição aberta: {side} em {entry_price} | SL={sl_price} | TPs {state['tp_order_ids']}")
+                    logger.error(f"Erro ao criar TP @ {tp_price}: {e}")
 
-        # Se há posição aberta, monitora
+            # Persiste TPs no estado
+            update_state(state)
+            logger.info(f"Posição aberta: {side} @ {entry_price} | SL=@{sl_price} | TPs={state['tp_order_ids']}")
+
+        # Monitoramento de posição aberta
         else:
-            price = get_last_price(cfg['symbol'])
+            price = get_last_price(symbol)
             entry = state['entry_price']
             current_sl = state.get('current_sl')
 
-            # Checa SL manual
-            if state['side'] == 'buy' and current_sl and price <= current_sl:
-                for tp_id in state.get('tp_order_ids', []): cancel_plan(tp_id)
+            # Verifica SL manual
+            if state['side']=='buy' and current_sl and price<=current_sl:
+                for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='sell', trade_side='close', size=order_size, hold_side='long')
-                state.update({
-                    'position_open': False,
-                    'tp_order_ids': [],
-                    'current_sl': None,
-                    'reversal_count': 0,
-                    'side': None
-                })
+                state.update({'position_open':False,'tp_order_ids':[],'current_sl':None,'side':None,'reversal_count':0})
                 update_state(state)
-                logger.info(f"SL manual atingido; posição fechada em {price}")
+                logger.info(f"SL manual atingido: {price}")
                 continue
-            if state['side'] == 'sell' and current_sl and price >= current_sl:
-                for tp_id in state.get('tp_order_ids', []): cancel_plan(tp_id)
+            if state['side']=='sell' and current_sl and price>=current_sl:
+                for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='buy', trade_side='close', size=order_size, hold_side='short')
-                state.update({
-                    'position_open': False,
-                    'tp_order_ids': [],
-                    'current_sl': None,
-                    'reversal_count': 0,
-                    'side': None
-                })
+                state.update({'position_open':False,'tp_order_ids':[],'current_sl':None,'side':None,'reversal_count':0})
                 update_state(state)
-                logger.info(f"SL manual atingido; posição fechada em {price}")
+                logger.info(f"SL manual atingido: {price}")
                 continue
 
-            # Reversão e BE omitidos para brevidade (mantêm lógica anterior)
+            # Reversão e BE (mantêm lógica anterior)
             # ...
 
         time.sleep(interval)
 
-if __name__ == '__main__':
+if __name__=='__main__':
     main()
