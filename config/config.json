@@ -11,8 +11,8 @@
   "orderSize": 0.0004,
   "slPct": 0.002,
   "tp1Pct": 0.003,
-  "tp2Pct": 0.005,
-  "tp3Pct": 0.0089,
+  "tp2Pct": 0.006,
+  "tp3Pct": 0.009,
   "tpPortions": [
     0.5,
     0.25,
