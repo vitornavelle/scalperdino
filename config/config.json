@@ -17,5 +17,5 @@
   "beOffsetPct1": 0.001,
   "beOffsetPct2": 0.004,
   "reversalSignalsRequired": 2,
-  "pollIntervalSec": 60
+  "pollIntervalSec":10
 }
