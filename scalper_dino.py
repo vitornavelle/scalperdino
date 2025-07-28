@@ -156,14 +156,32 @@ def main():
             if state['side']=='buy' and current_sl and price<=current_sl:
                 for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='sell', trade_side='close', size=order_size, hold_side='long')
-                state.update({'position_open':False,'tp_order_ids':[],'current_sl':None,'side':None,'reversal_count':0})
+                state.update({
+    'position_open': False,
+    'entry_price': None,
+    'current_sl': None,
+    'tp_order_ids': [],
+    'be1': False,
+    'be2': False,
+    'reversal_count': 0,
+    'side': None
+})
                 update_state(state)
                 logger.info(f"SL manual atingido: {price}")
                 continue
             if state['side']=='sell' and current_sl and price>=current_sl:
                 for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='buy', trade_side='close', size=order_size, hold_side='short')
-                state.update({'position_open':False,'tp_order_ids':[],'current_sl':None,'side':None,'reversal_count':0})
+                state.update({
+    'position_open': False,
+    'entry_price': None,
+    'current_sl': None,
+    'tp_order_ids': [],
+    'be1': False,
+    'be2': False,
+    'reversal_count': 0,
+    'side': None
+})
                 update_state(state)
                 logger.info(f"SL manual atingido: {price}")
                 continue
