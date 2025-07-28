@@ -2,7 +2,6 @@
 import time
 import json
 import logging
-import math
 import requests
 from dotenv import load_dotenv
 from modules.data_collector import get_last_price
@@ -38,7 +37,7 @@ def main():
     )
     logger = logging.getLogger()
 
-    # Define modo de posição UMA ÚNICA VEZ
+    # Define modo de posição UMA ÚNICA VEZ (chamada única)
     resp = set_position_mode()
     logger.info(f"Position mode set: {resp}")
 
@@ -92,13 +91,14 @@ def main():
                 time.sleep(interval)
                 continue
 
-            # Determina entry_price
+            # Determina entry_price e SL inicial com rounding de 1 decimal
             filled = resp_order.get('filledPrice') or resp_order.get('entry_price')
             if filled is None:
                 filled = get_last_price(symbol)
                 logger.warning(f"fallback entry_price: {filled}")
             entry_price = float(filled)
             sl_price = entry_price * (1 - sl_pct) if side == 'buy' else entry_price * (1 + sl_pct)
+            sl_price = round(sl_price, 1)
 
             # Persiste estado antes de criar TPs
             state.update({
@@ -147,7 +147,7 @@ def main():
 
             # Persiste TPs no estado
             update_state(state)
-            logger.info(f"Posição aberta: {side} @ {entry_price} | SL=@{sl_price} | TPs={state['tp_order_ids']}")
+            logger.info(f"Posição aberta: {side} @ {entry_price} | SL=@{sl_price} | TPs={state['tp_order_ids']}" )
 
         # Monitoramento de posição aberta
         else:
@@ -155,8 +155,9 @@ def main():
             entry = state['entry_price']
             current_sl = state.get('current_sl')
 
-            # Verifica SL manual
-            if state['side']=='buy' and current_sl and price<=current_sl:
+            # Verifica SL manual com rounding e BE1/BE2 após
+            logger.info(f"Checking SL: price={price}, SL={current_sl}")
+            if state['side']=='buy' and current_sl and price <= current_sl:
                 for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='sell', trade_side='close', size=order_size, hold_side='long')
                 state.update({
@@ -172,7 +173,7 @@ def main():
                 update_state(state)
                 logger.info(f"SL manual atingido: {price}")
                 continue
-            if state['side']=='sell' and current_sl and price>=current_sl:
+            if state['side']=='sell' and current_sl and price >= current_sl:
                 for tp_id in state.get('tp_order_ids',[]): cancel_plan(tp_id)
                 place_order(side='buy', trade_side='close', size=order_size, hold_side='short')
                 state.update({
@@ -195,6 +196,7 @@ def main():
                 target1 = entry * (1 + tp_price_pcts[0]) if state['side']=='buy' else entry * (1 - tp_price_pcts[0])
                 if (state['side']=='buy' and price>=target1) or (state['side']=='sell' and price<=target1):
                     sl_new = entry * (1 + be_offset1) if state['side']=='buy' else entry * (1 - be_offset1)
+                    sl_new = round(sl_new, 1)
                     state['current_sl'] = sl_new
                     state['be1'] = True
                     update_state(state)
@@ -204,6 +206,7 @@ def main():
                 target2 = entry * (1 + tp_price_pcts[1]) if state['side']=='buy' else entry * (1 - tp_price_pcts[1])
                 if (state['side']=='buy' and price>=target2) or (state['side']=='sell' and price<=target2):
                     sl_new = entry * (1 + be_offset2) if state['side']=='buy' else entry * (1 - be_offset2)
+                    sl_new = round(sl_new, 1)
                     state['current_sl'] = sl_new
                     state['be2'] = True
                     update_state(state)
