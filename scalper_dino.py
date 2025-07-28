@@ -71,12 +71,17 @@ def main():
             hold = 'long' if side == 'buy' else 'short'
 
             # 1) Abre posição de mercado
-            resp_order = place_order(
-                side=side,
-                trade_side='open',
-                size=order_size,
-                hold_side=hold
-            )
+            try:
+                resp_order = place_order(
+                    side=side,
+                    trade_side='open',
+                    size=order_size,
+                    hold_side=hold
+                )
+            except RuntimeError as e:
+                logger.error(f"Falha ao abrir posição ({sig}): {e}")
+                time.sleep(interval)
+                continue
 
             # Tratamento caso API não retorne preço
             filled = resp_order.get('filledPrice') or resp_order.get('entry_price')
@@ -162,25 +167,37 @@ def main():
                 logger.info(f"Reversal threshold reached ({reversal_required}); executing reversal.")
                 for tp_id in state.get('tp_order_ids', []):
                     cancel_plan(tp_id)
-                close_side = 'sell' if state['side'] == 'buy' else 'buy'
-                place_order(side=close_side, trade_side='close', size=order_size, hold_side=state['side'])
-                open_resp = place_order(
-                    side=close_side,
-                    trade_side='open',
-                    size=order_size,
-                    hold_side=('long' if close_side == 'buy' else 'short')
-                )
-                new_entry = float(open_resp.get('filledPrice', open_resp.get('entry_price')))
-                new_sl = new_entry * (1 - sl_pct) if close_side == 'buy' else new_entry * (1 + sl_pct)
+                place_order(side=('sell' if state['side']=='buy' else 'buy'),
+                            trade_side='close', size=order_size, hold_side=state['side'])
+                try:
+                    open_resp = place_order(
+                        side=('sell' if state['side']=='buy' else 'buy'),
+                        trade_side='open',
+                        size=order_size,
+                        hold_side=('long' if state['side']=='sell' else 'short')
+                    )
+                except RuntimeError as e:
+                    logger.error(f"Falha ao reverter posição: {e}")
+                    time.sleep(interval)
+                    continue
+
+                new_filled = open_resp.get('filledPrice') or open_resp.get('entry_price')
+                if new_filled is None:
+                    logger.error(f"Não foi possível determinar new_entry: resposta de place_order = {open_resp}")
+                    time.sleep(interval)
+                    continue
+
+                new_entry = float(new_filled)
+                new_sl = new_entry * (1 - sl_pct) if (state['side']=='sell') else new_entry * (1 + sl_pct)
                 state.update({
                     'entry_price': new_entry,
-                    'side': close_side,
+                    'side': ('sell' if state['side']=='buy' else 'buy'),
                     'reversal_count': 0,
                     'current_sl': new_sl
                 })
                 state['tp_order_ids'] = []
                 for pct, vol in zip(tp_price_pcts, tp_vol_portions):
-                    tp_price = new_entry * (1 + pct) if close_side == 'buy' else new_entry * (1 - pct)
+                    tp_price = new_entry * (1 + pct) if state['side']=='sell' else new_entry * (1 - pct)
                     tp = place_tpsl_order('takeProfit', tp_price, order_size * vol)
                     state['tp_order_ids'].append(tp['orderId'])
                 state['be1'] = False
