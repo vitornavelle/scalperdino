@@ -77,7 +77,15 @@ def main():
                 size=order_size,
                 hold_side=hold
             )
-            entry_price = float(resp_order.get('filledPrice', resp_order.get('entry_price')))
+
+            # Tratamento caso API não retorne preço
+            filled = resp_order.get('filledPrice') or resp_order.get('entry_price')
+            if filled is None:
+                logger.error(f"Não foi possível determinar entry_price: resposta de place_order = {resp_order}")
+                time.sleep(interval)
+                continue
+
+            entry_price = float(filled)
             sl_price = entry_price * (1 - sl_pct) if side == 'buy' else entry_price * (1 + sl_pct)
 
             # Atualiza estado inicial da posição
