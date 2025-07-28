@@ -2,6 +2,7 @@
 import time
 import json
 import logging
+import math
 from dotenv import load_dotenv
 from modules.data_collector import get_last_price
 from modules.order_executor import (
@@ -13,6 +14,7 @@ from modules.order_executor import (
 from modules.recovery_manager import load_state, update_state, sync_state_with_bitget
 from modules.signal_generator import generate_signal
 
+
 def main():
     # Carrega variáveis de ambiente
     load_dotenv()
@@ -21,6 +23,7 @@ def main():
     with open('config/config.json') as f:
         cfg = json.load(f)
     reversal_required = cfg.get('reversalSignalsRequired', 0)
+    tick_size = cfg.get('tickSize', 1)  # granularidade de preço para ajustar TP/SL
 
     # Configura logger
     logging.basicConfig(
@@ -96,6 +99,7 @@ def main():
             entry_price = float(filled)
             sl_price = entry_price * (1 - sl_pct) if side == 'buy' else entry_price * (1 + sl_pct)
 
+            # Atualiza estado inicial
             state.update({
                 'entry_price': entry_price,
                 'position_open': True,
@@ -104,10 +108,11 @@ def main():
                 'current_sl': sl_price
             })
 
-            # TPs iniciais
+            # 2) TPs iniciais com ajuste de tick_size
             state['tp_order_ids'] = []
             for pct, vol in zip(tp_price_pcts, tp_vol_portions):
-                tp_price = entry_price * (1 + pct) if side == 'buy' else entry_price * (1 - pct)
+                raw_price = entry_price * (1 + pct) if side == 'buy' else entry_price * (1 - pct)
+                tp_price = round(raw_price / tick_size) * tick_size
                 tp = place_tpsl_order('takeProfit', tp_price, order_size * vol)
                 state['tp_order_ids'].append(tp['orderId'])
 
@@ -116,18 +121,24 @@ def main():
             update_state(state)
             logger.info(f"Abrindo {side} em {entry_price} | SL em {sl_price} | TPs {state['tp_order_ids']}")
 
-        # 2) Monitoramento de posição aberta
+        # 2) Monitoramento de posição
         else:
             price = get_last_price(cfg['symbol'])
             entry = state['entry_price']
             current_sl = state.get('current_sl')
 
-            # SL manual
+            # Checa SL manual
             if state['side'] == 'buy' and current_sl and price <= current_sl:
                 logger.info(f"SL atingido em {price}")
                 for tp_id in state.get('tp_order_ids', []): cancel_plan(tp_id)
                 place_order(side='sell', trade_side='close', size=order_size, hold_side='long')
-                state.update({'position_open': False, 'tp_order_ids': [], 'current_sl': None, 'reversal_count': 0, 'side': None})
+                state.update({
+                    'position_open': False,
+                    'tp_order_ids': [],
+                    'current_sl': None,
+                    'reversal_count': 0,
+                    'side': None
+                })
                 update_state(state)
                 continue
 
@@ -135,11 +146,17 @@ def main():
                 logger.info(f"SL atingido em {price}")
                 for tp_id in state.get('tp_order_ids', []): cancel_plan(tp_id)
                 place_order(side='buy', trade_side='close', size=order_size, hold_side='short')
-                state.update({'position_open': False, 'tp_order_ids': [], 'current_sl': None, 'reversal_count': 0, 'side': None})
+                state.update({
+                    'position_open': False,
+                    'tp_order_ids': [],
+                    'current_sl': None,
+                    'reversal_count': 0,
+                    'side': None
+                })
                 update_state(state)
                 continue
 
-            # Reversão
+            # Lógica de reversão
             result = generate_signal()
             sig = result.get('signal')
             if sig in ('BUY', 'SELL'):
@@ -153,35 +170,49 @@ def main():
             if reversal_required and state['reversal_count'] >= reversal_required:
                 logger.info("Executando reversal")
                 for tp_id in state.get('tp_order_ids', []): cancel_plan(tp_id)
-                place_order(side=('sell' if state['side']=='buy' else 'buy'), trade_side='close', size=order_size, hold_side=state['side'])
+                place_order(side=('sell' if state['side']=='buy' else 'buy'),
+                            trade_side='close', size=order_size, hold_side=state['side'])
                 try:
-                    open_resp = place_order(side=('sell' if state['side']=='buy' else 'buy'), trade_side='open', size=order_size, hold_side=('long' if state['side']=='sell' else 'short'))
+                    open_resp = place_order(
+                        side=('sell' if state['side']=='buy' else 'buy'),
+                        trade_side='open', size=order_size,
+                        hold_side=('long' if state['side']=='sell' else 'short')
+                    )
                 except RuntimeError as e:
                     logger.error(f"Erro reversal: {e}")
                     time.sleep(interval)
                     continue
                 new_filled = open_resp.get('filledPrice') or open_resp.get('entry_price') or get_last_price(cfg['symbol'])
                 new_entry = float(new_filled)
-                new_sl = new_entry*(1-sl_pct) if ('buy'==('long' if state['side']=='sell' else 'short')) else new_entry*(1+sl_pct)
-                state.update({'entry_price': new_entry, 'side':('sell' if state['side']=='buy' else 'buy'), 'reversal_count':0, 'current_sl':new_sl})
-                state['tp_order_ids']=[]
-                for pct,vol in zip(tp_price_pcts,tp_vol_portions):
-                    tp_price=new_entry*(1+ pct if state['side']=='buy' else 1-pct)
-                    tp=place_tpsl_order('takeProfit',tp_price,order_size*vol)
+                new_sl = new_entry * (1 - sl_pct) if state['side']=='sell' else new_entry * (1 + sl_pct)
+                state.update({'entry_price': new_entry, 'side':('sell' if state['side']=='buy' else 'buy'),
+                              'reversal_count':0, 'current_sl':new_sl})
+                state['tp_order_ids'] = []
+                for pct, vol in zip(tp_price_pcts, tp_vol_portions):
+                    raw_price = new_entry * (1 + pct) if state['side']=='buy' else new_entry * (1 - pct)
+                    tp_price = round(raw_price / tick_size) * tick_size
+                    tp = place_tpsl_order('takeProfit', tp_price, order_size * vol)
                     state['tp_order_ids'].append(tp['orderId'])
-                state['be1']=state['be2']=False
+                state['be1'] = False
+                state['be2'] = False
                 update_state(state)
                 logger.info(f"Reversal executado: SL {new_sl} TPs {state['tp_order_ids']}")
                 time.sleep(interval)
                 continue
 
-            # BE manual
-            if not state['be1'] and price>=entry*(1+tp_price_pcts[0]): state.update({'current_sl':entry*(1+be_offset1),'be1':True});update_state(state);logger.info(f"TP1: SL {state['current_sl']}")
-            if state['be1'] and not state['be2'] and price>=entry*(1+tp_price_pcts[1]): state.update({'current_sl':entry*(1+be_offset2),'be2':True});update_state(state);logger.info(f"TP2: SL {state['current_sl']}")
+            # Break-even Manual
+            if not state['be1'] and price >= entry * (1 + tp_price_pcts[0]):
+                state['current_sl'] = entry * (1 + be_offset1)
+                state['be1'] = True
+                update_state(state)
+                logger.info(f"TP1: SL atualizado para {state['current_sl']}")
+            if state['be1'] and not state['be2'] and price >= entry * (1 + tp_price_pcts[1]):
+                state['current_sl'] = entry * (1 + be_offset2)
+                state['be2'] = True
+                update_state(state)
+                logger.info(f"TP2: SL atualizado para {state['current_sl']}")
 
         time.sleep(interval)
-
-    # Fim do loop
 
 if __name__ == '__main__':
     main()
