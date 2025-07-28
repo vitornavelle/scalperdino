@@ -36,7 +36,7 @@ def main():
     )
     logger = logging.getLogger()
 
-    # Define modo de posição UMA ÚNICA VEZ
+    # Define modo de posição UMA ÚNICA VEZ (fora do loop)
     resp = set_position_mode()
     logger.info(f"Position mode set: {resp}")
 
@@ -58,6 +58,8 @@ def main():
             logger.info("Bot pausado via dashboard.")
             time.sleep(interval)
             continue
+
+        # Sincroniza estado real da corretora
         sync_state_with_bitget(state)
 
         # Abertura de posição
@@ -114,7 +116,7 @@ def main():
             })
             update_state(state)
 
-            # Cria planos de take-profit
+            # Cria planos de take-profit via API direta
             entry_order_id = resp_order.get('orderId')
             for pct, vol in zip(tp_price_pcts, tp_vol_portions):
                 raw_price = entry_price * (1 + pct) if side == 'buy' else entry_price * (1 - pct)
@@ -169,7 +171,7 @@ def main():
             logger.info(f"DEBUG SL Check → side={state['side']} | price={price} | SL={current_sl}")
 
             # SL manual
-            if state['side']=='buy' and current_sl and price <= current_sl:
+            if state['side'] == 'buy' and current_sl and price <= current_sl:
                 for tp_id in state.get('tp_order_ids', []):
                     cancel_plan(tp_id)
                 place_order(
@@ -190,7 +192,7 @@ def main():
                 logger.info(f"SL manual atingido: {price}")
                 continue
 
-            if state['side']=='sell' and current_sl and price >= current_sl:
+            if state['side'] == 'sell' and current_sl and price >= current_sl:
                 for tp_id in state.get('tp_order_ids', []):
                     cancel_plan(tp_id)
                 place_order(
@@ -215,14 +217,14 @@ def main():
             if not state['be1']:
                 target1 = (
                     entry * (1 + tp_price_pcts[0])
-                    if state['side']=='buy'
+                    if state['side'] == 'buy'
                     else entry * (1 - tp_price_pcts[0])
                 )
-                if (state['side']=='buy' and price >= target1) or \
-                   (state['side']=='sell' and price <= target1):
+                if (state['side'] == 'buy' and price >= target1) or \
+                   (state['side'] == 'sell' and price <= target1):
                     sl_new = (
                         entry * (1 + be_offset1)
-                        if state['side']=='buy'
+                        if state['side'] == 'buy'
                         else entry * (1 - be_offset1)
                     )
                     sl_new = round(sl_new, 1)
@@ -235,14 +237,14 @@ def main():
             if state['be1'] and not state['be2']:
                 target2 = (
                     entry * (1 + tp_price_pcts[1])
-                    if state['side']=='buy'
+                    if state['side'] == 'buy'
                     else entry * (1 - tp_price_pcts[1])
                 )
-                if (state['side']=='buy' and price >= target2) or \
-                   (state['side']=='sell' and price <= target2):
+                if (state['side'] == 'buy' and price >= target2) or \
+                   (state['side'] == 'sell' and price <= target2):
                     sl_new = (
                         entry * (1 + be_offset2)
-                        if state['side']=='buy'
+                        if state['side'] == 'buy'
                         else entry * (1 - be_offset2)
                     )
                     sl_new = round(sl_new, 1)
@@ -253,5 +255,5 @@ def main():
 
         time.sleep(interval)
 
-if __name__=='__main__':
+if __name__ == '__main__':
     main()
