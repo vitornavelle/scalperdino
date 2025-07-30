@@ -29,8 +29,28 @@ def update_state(state):
     with open(STATE_FILE, 'w') as f:
         json.dump(state, f, indent=4)
 
+
 def sync_state_with_bitget(state):
-    """Reseta estado se não houver TPs nem SL definido."""
+    """
+    Sincroniza o estado local com a corretora: se não houver posição real, limpa o state.
+    """
+    try:
+        symbol = os.getenv("SYMBOL") or state.get("symbol") or "BTCUSDT"
+        if not has_open_position(symbol):
+            logging.warning("⚠️ Estado local indica posição, mas corretora NÃO. Resetando state.")
+            state.update({
+                'position_open': False,
+                'entry_price': None,
+                'current_sl': None,
+                'tp_order_ids': [],
+                'be1': False,
+                'be2': False,
+                'reversal_count': 0,
+                'side': None
+            })
+            update_state(state)
+    except Exception as e:
+        logging.error(f"[sync_state_with_bitget] Erro ao sincronizar estado: {e}")
     if not state.get('tp_order_ids') and not state.get('current_sl'):
         state.update({
             'position_open': False,
