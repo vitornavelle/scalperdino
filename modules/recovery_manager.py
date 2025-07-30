@@ -1,18 +1,14 @@
-# File: modules/recovery_manager.py
 import os
 import json
 
-# Caminho para o state do robô
 STATE_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'state.json')
 
 def load_state():
-    """
-    Carrega o estado do robô do arquivo JSON, garantindo chaves padrão.
-    """
-    if os.path.exists(STATE_FILE):
+    """Carrega o estado do robô do arquivo JSON, com valores padrão."""
+    try:
         with open(STATE_FILE) as f:
             raw = json.load(f)
-    else:
+    except Exception:
         raw = {}
 
     return {
@@ -28,22 +24,19 @@ def load_state():
     }
 
 def update_state(state):
-    """
-    Persiste o estado completo no arquivo JSON.
-    """
+    """Salva o estado atual no arquivo JSON."""
     os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
     with open(STATE_FILE, 'w') as f:
         json.dump(state, f, indent=4)
 
 def sync_state_with_bitget(state):
-    """
-    Se não há ordens de TP nem um SL manual ativo, marca posição como fechada
-    e zera reversões e side.
-    """
+    """Reseta estado se não houver TPs nem SL definido."""
     if not state.get('tp_order_ids') and not state.get('current_sl'):
-        state['position_open']   = False
-        state['reversal_count']  = 0
-        state['side']            = None
-        state['current_sl']      = None
+        state.update({
+            'position_open': False,
+            'reversal_count': 0,
+            'side': None,
+            'current_sl': None
+        })
         update_state(state)
     return state
