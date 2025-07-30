@@ -109,3 +109,21 @@ def has_open_position(symbol, product_type="USDT-FUTURES"):
         print(f"[ERRO] Falha em has_open_position: {e}")
         return False
 
+def place_tpsl_order(side, trigger_price, size):
+    path = '/api/v2/mix/order/place-plan-order'
+    payload = {
+        'symbol': SYMBOL,
+        'productType': PRODUCT,
+        'marginCoin': 'USDT',
+        'marginMode': 'isolated',
+        'planType': 'profit_loss',
+        'triggerPrice': str(trigger_price),
+        'side': side,
+        'size': str(size),
+        'triggerType': 'mark_price'
+    }
+    hdrs, body, _ = headers('POST', path, body_dict=payload)
+    resp = requests.post(BASE_URL + path, headers=hdrs, data=body).json()
+    if resp.get("code") != "00000":
+        raise RuntimeError(f"Erro ao enviar TP/SL: {resp.get('msg')}")
+    return resp.get("data", {}).get("orderId")
