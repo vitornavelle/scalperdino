@@ -5,6 +5,7 @@ import logging
 from dotenv import load_dotenv
 from modules.data_collector import get_last_price
 from modules.order_executor import (
+    place_tpsl_order,
     set_position_mode,
     place_order,
     cancel_plan,
@@ -74,6 +75,14 @@ def handle_stop_loss(price, state, cfg, logger):
         'reversal_count': 0,
         'side': None
     })
+    
+    state['tp_order_ids'] = place_tpsl_order(
+        pos_info['entry_price'],
+        pos_info['side'],
+        cfg,
+        cfg['symbol']
+    )
+
     update_state(state)
     logger.info(f"Stop Loss atingido em {price:.2f}")
 
@@ -107,7 +116,15 @@ def monitor_position(cfg, state, logger):
                 new_sl = round(new_sl / tick_size) * tick_size
                 state['current_sl'] = new_sl
                 state['be1'] = True
-                update_state(state)
+                
+    state['tp_order_ids'] = place_tpsl_order(
+        pos_info['entry_price'],
+        pos_info['side'],
+        cfg,
+        cfg['symbol']
+    )
+
+    update_state(state)
                 logger.info(f"TP1 atingido → SL movido para {new_sl}")
 
         # Break-even 2
@@ -118,7 +135,15 @@ def monitor_position(cfg, state, logger):
                 new_sl = round(new_sl / tick_size) * tick_size
                 state['current_sl'] = new_sl
                 state['be2'] = True
-                update_state(state)
+                
+    state['tp_order_ids'] = place_tpsl_order(
+        pos_info['entry_price'],
+        pos_info['side'],
+        cfg,
+        cfg['symbol']
+    )
+
+    update_state(state)
                 logger.info(f"TP2 atingido → SL movido para {new_sl}")
 
         time.sleep(cfg.get('pollIntervalSec', 1))
@@ -150,7 +175,15 @@ def main():
         if has_open_position(cfg['symbol']):
             if not state.get('position_open'):
                 state['position_open'] = True
-                update_state(state)
+                
+    state['tp_order_ids'] = place_tpsl_order(
+        pos_info['entry_price'],
+        pos_info['side'],
+        cfg,
+        cfg['symbol']
+    )
+
+    update_state(state)
             time.sleep(cfg.get('pollIntervalSec', 1))
             continue
 
@@ -176,7 +209,15 @@ def main():
             'be2': False,
             'reversal_count': 0
         })
-        update_state(state)
+        
+    state['tp_order_ids'] = place_tpsl_order(
+        pos_info['entry_price'],
+        pos_info['side'],
+        cfg,
+        cfg['symbol']
+    )
+
+    update_state(state)
 
         # Monitora até o fim
         monitor_position(cfg, state, logger)
