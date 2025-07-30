@@ -32,9 +32,11 @@ def update_state(key, value):
 
 def sync_state_with_bitget(state):
     try:
-        from config.config import CONFIG
-        symbol = CONFIG["symbol"]
-        product_type = CONFIG["productType"]
+        # Corrigido: leitura via JSON
+        with open("config/config.json") as f:
+            cfg = json.load(f)
+        symbol = cfg["symbol"]
+        product_type = cfg["productType"]
 
         if state.get("position_open") and not has_open_position(symbol, product_type):
             logging.warning("⚠️ Estado local indica posição, mas corretora NÃO. Resetando state.")
