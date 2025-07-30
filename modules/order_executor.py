@@ -1,3 +1,4 @@
+
 import time
 import requests
 import json
@@ -76,54 +77,23 @@ def cancel_plan(plan_id):
     hdrs, body, _ = headers('POST', path, body_dict=payload)
     return requests.post(BASE_URL + path, headers=hdrs, data=body).json()
 
-
-def has_open_position(symbol, product_type="USDT-FUTURES"):
+def has_open_position(symbol, product_type):
     path = '/api/v2/mix/position/single-position'
     query = {
-        "symbol": symbol,
-        "marginCoin": "USDT",
-        "productType": product_type
+        'symbol': symbol,
+        'marginCoin': 'USDT',
+        'productType': product_type
     }
-
     try:
         hdrs, _, _ = headers('GET', path, query_dict=query)
-        full_path = f"{path}?symbol={symbol}&marginCoin=USDT&productType={product_type}"
-        resp = requests.get(BASE_URL + full_path, headers=hdrs, timeout=5)
-
-        if resp.status_code != 200:
-            print(f"[ERRO] HTTP {resp.status_code} em has_open_position")
-            return False
-
+        resp = requests.get(BASE_URL + path, headers=hdrs, params=query, timeout=5)
         data = resp.json()
-        print(f"[DEBUG] Resposta Bitget (has_open_position): {data}")
-
         if data.get("code") != "00000":
-            print(f"[ERRO] API Bitget: {data.get('msg')}")
+            print(f"[ERRO] Bitget: {data.get('msg')}")
             return False
-
-        pos_data = data.get("data", {})
-        size = float(pos_data.get("available", 0))
+        position_data = data.get("data", {})
+        size = float(position_data.get("total", 0))
         return size > 0
-
     except Exception as e:
-        print(f"[ERRO] Falha em has_open_position: {e}")
+        print(f"[ERRO] Consulta posição falhou: {e}")
         return False
-
-def place_tpsl_order(side, trigger_price, size):
-    path = '/api/v2/mix/order/place-plan-order'
-    payload = {
-        'symbol': SYMBOL,
-        'productType': PRODUCT,
-        'marginCoin': 'USDT',
-        'marginMode': 'isolated',
-        'planType': 'profit_loss',
-        'triggerPrice': str(trigger_price),
-        'side': side,
-        'size': str(size),
-        'triggerType': 'mark_price'
-    }
-    hdrs, body, _ = headers('POST', path, body_dict=payload)
-    resp = requests.post(BASE_URL + path, headers=hdrs, data=body).json()
-    if resp.get("code") != "00000":
-        raise RuntimeError(f"Erro ao enviar TP/SL: {resp.get('msg')}")
-    return resp.get("data", {}).get("orderId")
