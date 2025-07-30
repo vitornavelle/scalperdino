@@ -78,7 +78,18 @@ def cancel_plan(plan_id):
 
 def has_open_position(symbol):
     path = '/api/mix/v1/position/singlePosition'
-    hdrs, _, _ = headers('GET', path, query_dict={"symbol": symbol})
-    resp = requests.get(BASE_URL + path + f"?symbol={symbol}", headers=hdrs).json()
-    size = float(resp.get('data', {}).get('size', 0))
-    return size > 0
+    try:
+        hdrs, _, _ = headers('GET', path, query_dict={"symbol": symbol})
+        resp = requests.get(BASE_URL + path + f"?symbol={symbol}", headers=hdrs, timeout=5)
+        if resp.status_code != 200:
+            print(f"[ERRO] HTTP {resp.status_code} em has_open_position")
+            return False
+        data = resp.json()
+        if data.get("code") != "00000":
+            print(f"[ERRO] API Bitget: {data.get('msg')}")
+            return False
+        size = float(data.get('data', {}).get('size', 0))
+        return size > 0
+    except Exception as e:
+        print(f"[ERRO] Falha em has_open_position: {e}")
+        return False
