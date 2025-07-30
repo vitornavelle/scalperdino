@@ -11,7 +11,7 @@ from modules.order_executor import (
     cancel_plan,
     has_open_position
 )
-from modules.recovery_manager import load_state, update_state, sync_state_with_bitget
+from modules.recovery_manager import load_state, save_state, sync_state_with_bitget
 from modules.signal_generator import generate_signal
 
 def wait_for_signal(signal_poll, timeout=3600):
@@ -70,7 +70,7 @@ def handle_stop_loss(price, state, cfg, logger):
         'reversal_count': 0,
         'side': None
     })
-    update_state(state)
+    save_state(state)
     logger.info(f"Stop Loss atingido em {price:.2f}")
 
 def monitor_position(cfg, state, logger):
@@ -201,7 +201,7 @@ def main():
         except Exception as e:
             logger.warning(f"Erro ao enviar TPs: {e}")
 
-        update_state(state)
+        save_state(state)
         monitor_position(cfg, state, logger)
 
 if __name__ == '__main__':
