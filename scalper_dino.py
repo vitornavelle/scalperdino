@@ -80,8 +80,7 @@ def monitor_position(cfg, state, logger):
     be_offset2 = cfg['beOffsetPct2']
     tick_size = cfg.get('tickSize', 1)
 
-    # RESET AUTOMÁTICO SE NÃO HOUVER POSIÇÃO
-    if not has_open_position(symbol):
+    if not has_open_position(symbol, cfg['productType']):
         logger.warning("⚠️ Estado indica posição aberta, mas corretora NÃO. Resetando state.")
         state.update({
             'position_open': False,
@@ -154,7 +153,7 @@ def main():
 
         sync_state_with_bitget(state)
 
-        if has_open_position(cfg['symbol']):
+        if has_open_position(cfg['symbol'], cfg['productType']):
             if not state.get('position_open'):
                 state['position_open'] = True
                 update_state(state)
@@ -182,12 +181,25 @@ def main():
             'reversal_count': 0
         })
 
-        state['tp_order_ids'] = place_tpsl_order(
-            pos_info['entry_price'],
-            pos_info['side'],
-            cfg,
-            cfg['symbol']
-        )
+        try:
+            tp1 = pos_info['entry_price'] * (1 - cfg['tp1Pct']) if pos_info['side'] == 'sell' else pos_info['entry_price'] * (1 + cfg['tp1Pct'])
+            tp2 = pos_info['entry_price'] * (1 - cfg['tp2Pct']) if pos_info['side'] == 'sell' else pos_info['entry_price'] * (1 + cfg['tp2Pct'])
+            tp3 = pos_info['entry_price'] * (1 - cfg['tp3Pct']) if pos_info['side'] == 'sell' else pos_info['entry_price'] * (1 + cfg['tp3Pct'])
+
+            tp_orders = []
+            for tp_price in [tp1, tp2, tp3]:
+                order_id = place_tpsl_order(
+                    trigger_price=round(tp_price, 2),
+                    trigger_type="market_price",
+                    side='buy' if pos_info['side'] == 'sell' else 'sell',
+                    size=cfg['orderSize'],
+                    hold_side=pos_info['hold']
+                )
+                tp_orders.append(order_id)
+
+            state['tp_order_ids'] = tp_orders
+        except Exception as e:
+            logger.warning(f"Erro ao enviar TPs: {e}")
 
         update_state(state)
         monitor_position(cfg, state, logger)
