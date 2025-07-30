@@ -76,61 +76,36 @@ def cancel_plan(plan_id):
     hdrs, body, _ = headers('POST', path, body_dict=payload)
     return requests.post(BASE_URL + path, headers=hdrs, data=body).json()
 
-def has_open_position(symbol):
-    path = '/api/mix/v1/position/singlePosition'
+
+def has_open_position(symbol, product_type="USDT-FUTURES"):
+    path = '/api/v2/mix/position/single-position'
+    query = {
+        "symbol": symbol,
+        "marginCoin": "USDT",
+        "productType": product_type
+    }
+
     try:
-        hdrs, _, _ = headers('GET', path, query_dict={"symbol": symbol})
-        resp = requests.get(BASE_URL + path + f"?symbol={symbol}", headers=hdrs, timeout=5)
+        hdrs, _, _ = headers('GET', path, query_dict=query)
+        full_path = f"{path}?symbol={symbol}&marginCoin=USDT&productType={product_type}"
+        resp = requests.get(BASE_URL + full_path, headers=hdrs, timeout=5)
+
         if resp.status_code != 200:
             print(f"[ERRO] HTTP {resp.status_code} em has_open_position")
             return False
+
         data = resp.json()
+        print(f"[DEBUG] Resposta Bitget (has_open_position): {data}")
+
         if data.get("code") != "00000":
             print(f"[ERRO] API Bitget: {data.get('msg')}")
             return False
-        size = float(data.get('data', {}).get('size', 0))
+
+        pos_data = data.get("data", {})
+        size = float(pos_data.get("available", 0))
         return size > 0
+
     except Exception as e:
         print(f"[ERRO] Falha em has_open_position: {e}")
         return False
 
-def place_tpsl_order(entry_price, side, cfg, symbol):
-    tick_size = cfg.get('tickSize', 1)
-    portions = cfg['tpPortions']
-    percents = [cfg['tp1Pct'], cfg['tp2Pct'], cfg['tp3Pct']]
-    order_size = cfg['orderSize']
-    product_type = cfg.get('productType', 'USDT-FUTURES')
-    margin_coin = cfg.get('marginCoin', 'USDT')
-    hold = 'long' if side == 'buy' else 'short'
-    ids = []
-
-    for pct, vol in zip(percents, portions):
-        raw = entry_price * (1 + pct) if side == 'buy' else entry_price * (1 - pct)
-        tp = round(raw / tick_size) * tick_size
-        oid = str(int(time.time() * 1000))
-        payload = {
-            'symbol': symbol,
-            'productType': product_type,
-            'marginCoin': margin_coin,
-            'planType': 'profit_plan',
-            'triggerType': 'mark_price',
-            'orderId': '',  # não obrigatório
-            'size': str(order_size * vol),
-            'triggerPrice': str(tp),
-            'executePrice': str(tp),
-            'side': side,
-            'holdSide': hold,
-            'reduceOnly': True,
-            'clientOid': oid
-        }
-
-        try:
-            hdrs, body, _ = headers('POST', '/api/v2/mix/order/place-tpsl-order', body_dict=payload)
-            resp = requests.post(BASE_URL + '/api/v2/mix/order/place-tpsl-order', headers=hdrs, data=body).json()
-            if resp.get('code') != '00000':
-                raise RuntimeError(resp.get('msg'))
-            ids.append(resp['data']['orderId'])
-        except Exception as e:
-            print(f"[ERRO ao criar TP @ {tp}] {e}")
-
-    return ids
