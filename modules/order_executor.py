@@ -20,14 +20,16 @@ def sign(ts, method, path, body=""):
     mac = hmac.new(API_SECRET.encode(), (ts + method.upper() + path + body).encode(), hashlib.sha256).digest()
     return base64.b64encode(mac).decode()
 
-def headers(method, path, params=None, body_dict=None):
+def headers(method, path, query_dict=None, body_dict=None):
     ts = str(int(time.time() * 1000))
     body, sign_path = "", path
-    if method == 'GET' and params:
-        qs = urlencode(sorted(params.items()))
+
+    if method == 'GET' and query_dict:
+        qs = urlencode(sorted(query_dict.items()))
         sign_path = f"{path}?{qs}"
     if method == 'POST' and body_dict is not None:
         body = json.dumps(body_dict, separators=(',', ':'))
+
     return {
         'ACCESS-KEY': API_KEY,
         'ACCESS-SIGN': sign(ts, method, sign_path, body),
@@ -63,36 +65,20 @@ def place_order(side, trade_side, size, hold_side):
         raise RuntimeError(resp.get('msg'))
     return resp.get('data', {})
 
-def place_tpsl_order(plan_type, trigger_price, size):
-    path = '/api/v2/mix/order/place-tpsl-order'
-    payload = {
-        'symbol': SYMBOL,
-        'productType': PRODUCT,
-        'marginCoin': 'USDT',
-        'planType': 'profit_plan' if plan_type == 'takeProfit' else 'loss_plan',
-        'triggerType': 'mark_price',
-        'orderId': None,
-        'size': str(size),
-        'triggerPrice': str(trigger_price),
-        'executePrice': str(trigger_price),
-        'side': 'buy' if plan_type == 'takeProfit' else 'sell',
-        'holdSide': 'long' if plan_type == 'takeProfit' else 'short',
-        'reduceOnly': True,
-        'clientOid': str(int(time.time() * 1000))
-    }
-    hdrs, body, _ = headers('POST', path, body_dict=payload)
-    resp = requests.post(BASE_URL + path, headers=hdrs, data=body).json()
-    if resp.get('code') != '00000':
-        raise RuntimeError(resp.get('msg'))
-    return resp.get('data', {})
-
-def cancel_plan(order_id):
+def cancel_plan(plan_id):
     path = '/api/v2/mix/order/cancel-plan-order'
     payload = {
         'symbol': SYMBOL,
-        'productType': PRODUCT,
         'marginCoin': 'USDT',
-        'orderId': order_id
+        'productType': PRODUCT,
+        'orderId': plan_id
     }
     hdrs, body, _ = headers('POST', path, body_dict=payload)
-    requests.post(BASE_URL + path, headers=hdrs, data=body)
+    return requests.post(BASE_URL + path, headers=hdrs, data=body).json()
+
+def has_open_position(symbol):
+    path = '/api/mix/v1/position/singlePosition'
+    hdrs, _, _ = headers('GET', path, query_dict={"symbol": symbol})
+    resp = requests.get(BASE_URL + path + f"?symbol={symbol}", headers=hdrs).json()
+    size = float(resp.get('data', {}).get('size', 0))
+    return size > 0
