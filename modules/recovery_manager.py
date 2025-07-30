@@ -1,5 +1,7 @@
 import os
 import json
+import logging
+from modules.order_executor import has_open_position
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'state.json')
 
