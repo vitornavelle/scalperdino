@@ -5,19 +5,16 @@ import logging
 from dotenv import load_dotenv
 from modules.data_collector import get_last_price
 from modules.order_executor import (
-    place_tpsl_order,
     set_position_mode,
     place_order,
+    place_tpsl_order,
     cancel_plan,
-    headers,
-    BASE_URL,
     has_open_position
 )
 from modules.recovery_manager import load_state, update_state, sync_state_with_bitget
 from modules.signal_generator import generate_signal
 
 def wait_for_signal(signal_poll, timeout=3600):
-    """Espera por um sinal válido até o timeout."""
     start = time.time()
     while time.time() - start < timeout:
         result = generate_signal()
@@ -28,7 +25,6 @@ def wait_for_signal(signal_poll, timeout=3600):
     return None, None
 
 def open_position(cfg, sig, result, logger):
-    """Abre uma nova posição com base no sinal."""
     side = 'buy' if sig == 'BUY' else 'sell'
     hold = 'long' if side == 'buy' else 'short'
 
@@ -56,7 +52,6 @@ def open_position(cfg, sig, result, logger):
     }, order
 
 def handle_stop_loss(price, state, cfg, logger):
-    """Fecha posição se o preço atingir o SL."""
     close_side = 'sell' if state['side'] == 'buy' else 'buy'
     hold = 'long' if state['side'] == 'buy' else 'short'
     for tp in state.get('tp_order_ids', []):
@@ -75,24 +70,31 @@ def handle_stop_loss(price, state, cfg, logger):
         'reversal_count': 0,
         'side': None
     })
-    
-    state['tp_order_ids'] = place_tpsl_order(
-        pos_info['entry_price'],
-        pos_info['side'],
-        cfg,
-        cfg['symbol']
-    )
-
     update_state(state)
     logger.info(f"Stop Loss atingido em {price:.2f}")
 
 def monitor_position(cfg, state, logger):
-    """Monitora a posição ativa: SL, BE1, BE2."""
     symbol = cfg['symbol']
     tp_price_pcts = [cfg['tp1Pct'], cfg['tp2Pct'], cfg['tp3Pct']]
     be_offset1 = cfg['beOffsetPct1']
     be_offset2 = cfg['beOffsetPct2']
     tick_size = cfg.get('tickSize', 1)
+
+    # RESET AUTOMÁTICO SE NÃO HOUVER POSIÇÃO
+    if not has_open_position(symbol):
+        logger.warning("⚠️ Estado indica posição aberta, mas corretora NÃO. Resetando state.")
+        state.update({
+            'position_open': False,
+            'entry_price': None,
+            'current_sl': None,
+            'tp_order_ids': [],
+            'be1': False,
+            'be2': False,
+            'reversal_count': 0,
+            'side': None
+        })
+        update_state(state)
+        return
 
     while state.get('position_open') and not state.get('paused'):
         price = get_last_price(symbol)
@@ -100,7 +102,6 @@ def monitor_position(cfg, state, logger):
         sl = state['current_sl']
         logger.info(f"[MONITOR] price={price} | SL={sl}")
 
-        # Stop Loss
         if state['side'] == 'buy' and price <= sl:
             handle_stop_loss(price, state, cfg, logger)
             break
@@ -108,7 +109,6 @@ def monitor_position(cfg, state, logger):
             handle_stop_loss(price, state, cfg, logger)
             break
 
-        # Break-even 1
         if not state['be1']:
             t1 = entry * (1 + tp_price_pcts[0]) if state['side'] == 'buy' else entry * (1 - tp_price_pcts[0])
             if (state['side'] == 'buy' and price >= t1) or (state['side'] == 'sell' and price <= t1):
@@ -116,18 +116,9 @@ def monitor_position(cfg, state, logger):
                 new_sl = round(new_sl / tick_size) * tick_size
                 state['current_sl'] = new_sl
                 state['be1'] = True
-                
-    state['tp_order_ids'] = place_tpsl_order(
-        pos_info['entry_price'],
-        pos_info['side'],
-        cfg,
-        cfg['symbol']
-    )
-
-    update_state(state)
+                update_state(state)
                 logger.info(f"TP1 atingido → SL movido para {new_sl}")
 
-        # Break-even 2
         if state['be1'] and not state['be2']:
             t2 = entry * (1 + tp_price_pcts[1]) if state['side'] == 'buy' else entry * (1 - tp_price_pcts[1])
             if (state['side'] == 'buy' and price >= t2) or (state['side'] == 'sell' and price <= t2):
@@ -135,15 +126,7 @@ def monitor_position(cfg, state, logger):
                 new_sl = round(new_sl / tick_size) * tick_size
                 state['current_sl'] = new_sl
                 state['be2'] = True
-                
-    state['tp_order_ids'] = place_tpsl_order(
-        pos_info['entry_price'],
-        pos_info['side'],
-        cfg,
-        cfg['symbol']
-    )
-
-    update_state(state)
+                update_state(state)
                 logger.info(f"TP2 atingido → SL movido para {new_sl}")
 
         time.sleep(cfg.get('pollIntervalSec', 1))
@@ -171,30 +154,19 @@ def main():
 
         sync_state_with_bitget(state)
 
-        # Verifica se já há posição real na corretora
         if has_open_position(cfg['symbol']):
             if not state.get('position_open'):
                 state['position_open'] = True
-                
-    state['tp_order_ids'] = place_tpsl_order(
-        pos_info['entry_price'],
-        pos_info['side'],
-        cfg,
-        cfg['symbol']
-    )
-
-    update_state(state)
+                update_state(state)
             time.sleep(cfg.get('pollIntervalSec', 1))
             continue
 
-        # Espera por sinal
         logger.info("Esperando sinal...")
         sig, result = wait_for_signal(cfg.get('signalPollSec', 1))
         if not sig:
             logger.warning("Timeout: nenhum sinal válido encontrado.")
             continue
 
-        # Abre a posição
         pos_info, order = open_position(cfg, sig, result, logger)
         if not pos_info:
             continue
@@ -209,17 +181,15 @@ def main():
             'be2': False,
             'reversal_count': 0
         })
-        
-    state['tp_order_ids'] = place_tpsl_order(
-        pos_info['entry_price'],
-        pos_info['side'],
-        cfg,
-        cfg['symbol']
-    )
 
-    update_state(state)
+        state['tp_order_ids'] = place_tpsl_order(
+            pos_info['entry_price'],
+            pos_info['side'],
+            cfg,
+            cfg['symbol']
+        )
 
-        # Monitora até o fim
+        update_state(state)
         monitor_position(cfg, state, logger)
 
 if __name__ == '__main__':
