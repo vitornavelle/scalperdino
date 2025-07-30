@@ -97,3 +97,25 @@ def has_open_position(symbol, product_type):
     except Exception as e:
         print(f"[ERRO] Consulta posição falhou: {e}")
         return False
+
+def place_tpsl_order(trigger_price, trigger_type, side, size, hold_side):
+    path = "/api/v2/mix/order/place-plan-order"
+    payload = {
+        "symbol": SYMBOL,
+        "marginCoin": "USDT",
+        "productType": PRODUCT,
+        "planType": "profit_loss",
+        "triggerPrice": str(trigger_price),
+        "triggerType": trigger_type,  # "market_price"
+        "side": side,  # "buy" ou "sell"
+        "size": str(size),
+        "marginMode": "isolated",
+        "holdSide": hold_side,
+        "orderType": "market",
+        "clientOid": str(int(time.time() * 1000))
+    }
+    hdrs, body, _ = headers("POST", path, body_dict=payload)
+    resp = requests.post(BASE_URL + path, headers=hdrs, data=body).json()
+    if resp.get("code") != "00000":
+        raise RuntimeError(f"[place_tpsl_order] {resp.get('msg')}")
+    return resp.get("data", {}).get("orderId")
